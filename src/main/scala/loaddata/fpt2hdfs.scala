@@ -1,5 +1,6 @@
 package loaddata
 
+import com.springml.sftp.client.SFTPClient
 import org.apache.spark.SparkFiles
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{DataFrame, SparkSession}
@@ -26,6 +27,9 @@ object fpt2hdfs {
   val sqlcontext = spark.sqlContext
   def main(args: Array[String]): Unit = {
 
+
+
+
     val df: DataFrame = spark.read.
       format("com.springml.spark.sftp").
       option("host", "192.168.5.200").
@@ -34,8 +38,8 @@ object fpt2hdfs {
       option("fileType", "txt").
       option("port", "22").
       load("/root/001.txt")
-    df.show()
-val dataSource="ftp://root:123456/192.168.5.200/root/001.txt"
+      df.show()
+    val dataSource="ftp://root:123456/192.168.5.200/root/001.txt"
 
   //  context.addFile(dataSource)
   // val str = SparkFiles.get("001.txt")
@@ -44,9 +48,16 @@ val dataSource="ftp://root:123456/192.168.5.200/root/001.txt"
   //  val frame = spark.read.text(str)
     df.show()
 
-
-
   }
+
+  def getList:String={
+
+    new SFTPClient()
+
+
+    ""
+  }
+
 }
 
 

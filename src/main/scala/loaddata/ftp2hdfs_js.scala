@@ -13,17 +13,18 @@ import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 import org.apache.spark.sql.functions._
 
 import scala.collection.mutable._
+
 /**
   * @author xiang
-  * 2018/11/15
+  *         2018/11/15
   */
 
 object ftp2hdfs_js {
-  val host="192.168.5.200"
-  val userName="root"
-  val password="123456"
-  val port="22"
-  var path="/root/data/"
+  val host = "192.168.5.200"
+  val userName = "root"
+  val password = "123456"
+  val port = "22"
+  var path = "/root/data/"
 
 
   val spark: SparkSession = SparkSession
@@ -39,143 +40,54 @@ object ftp2hdfs_js {
   val context = spark.sparkContext
   context.setLogLevel("WARN")
   val sqlcontext = spark.sqlContext
+  val date = getToday
+
   def main(args: Array[String]): Unit = {
 
 
-    var list: ListBuffer[String] =getList
-    upload(list)
+    upload(s"lte_cdpi_url_$date.txt.gzip", 6)
+    upload(s"3g_cdpi_url_$date.txt.gzip", 7)
+    upload(s"lte-$date.txt.gzip", 8)
+    upload(s"cdpi-$date.txt.gzip", 9)
+    upload(s"gdpi-$date.txt.gzip", 10)
+    upload(s"gdpi_url_$date.txt.gzip", 11)
 
+    spark.close()
   }
 
 
-  spark.close()
-
-
-  def upload(list:ListBuffer[String]): Unit ={
-
-    for(filename <-list){
-
-
+  def upload(filename: String, dataType: Int): Unit = {
     val df = spark.read.text(s"ftp://$userName:$password@$host$password$filename")
-      println(filename)
-      val date=filename.substring(8,15)
-      var source_ds:Dataset[YHtable]=null
+    println(filename)
+    val value: Dataset[Array[String]] = df.map(t => t.getString(0).split("\t")).filter(t => t.length == 2)
+    val table = value.map(words => {
 
-      if (filename.startsWith("apk_url")) {
-        source_ds = df.map(t => {
-          val words: Array[String] = t.getString(0).split("\t")
-          val dataSource: Int = 1
-          val URL: String = words(1)
-          val Id: String = words(0)
-          val URL_Time: Int = 1
-          val dt: String = date
-          YHtable(dataSource, URL, Id, URL_Time, dt)
-
-        }
-        )
-        source_ds
-      }
-      else if (filename.startsWith("cw_url")) {
-        source_ds =df.map(t=>{
-          val words: Array[String] = t.getString(0).split("\t")
-          val dataSource:Int=4
-          val URL:String=words(1)
-          val Id:String=words(0)
-          val URL_Time:Int=1
-          val dt	:String=date
-          YHtable(dataSource,URL,Id,URL_Time,dt)
-
-        }
-        )
-        source_ds
-      }
-      else if (filename.startsWith("dx_url")) {
-        source_ds =df.map(t=>{
-          val words: Array[String] = t.getString(0).split("\t")
-          val dataSource:Int=2
-          val URL:String=words(1)
-          val Id:String=words(0)
-          val URL_Time:Int=1
-          val dt	:String=date
-          YHtable(dataSource,URL,Id,URL_Time,dt)
-
-        }
-        )
-        source_ds
-      }
-      else if (filename.startsWith("gw_url")) {
-        source_ds =df.map(t=>{
-          val words: Array[String] = t.getString(0).split("\t")
-          val dataSource:Int=3
-          val URL:String=words(1)
-          val Id:String=words(0)
-          val URL_Time:Int=1
-          val dt	:String=date
-          YHtable(dataSource,URL,Id,URL_Time,dt)
-
-        }
-        )
-        source_ds
-      }
-      else if (filename.startsWith("sg_url")) {
-        source_ds =df.map(t=>{
-          val words: Array[String] = t.getString(0).split("\t")
-          val dataSource:Int=5
-          val URL:String=words(1)
-          val Id:String=words(0)
-          val URL_Time:Int=1
-          val dt	:String=date
-          YHtable(dataSource,URL,Id,URL_Time,dt)
-
-        }
-        )
-        source_ds
-      }else{
-        null
-      }
-
-
-
-
-
-
-
-      val table = source_ds.withColumn("date",date_format(unix_timestamp($"dt","yyyyMMdd").cast("timestamp"),"yyyyMMdd")).drop("dt")
-
-      table.show()
-      // table.write.partitionBy("date").insertInto("dpi")
+      val dataSource: Int = dataType
+      val URL: String = words(0)
+      val Id: String = ""
+      val URL_Time: Int = words(0).toInt
+      val dt: String = date
+      YHtable(dataSource, URL, Id, URL_Time, dt)
 
     }
-    println("----------list---finish-------------")
+    )
 
-
+    table.show()
+    // table.write.partitionBy("date").insertInto("dpi")
 
   }
 
+  println("----------list---finish-------------")
 
 
-  //获取目录列表
-  def getList()= {
-
-
-    val client = new SFTPUtil(userName, password, host, 22)
-    client.login()
-    val filelist: util.Vector[_] = client.listFiles(s"$path")
-    client.logout()
-    val list:ListBuffer[String]= ListBuffer()
-    for (i <- 0 until filelist.size()) {
-      val str = filelist.get(i).toString.split("\\s+").last
-      if (!".".equals(str) && !"..".equals(str)) {
-        list.append(str)
-
-      }
-    }
-
-    list
-
-
+  //获取当天日期
+  def getToday: String = {
+    val calendar = Calendar.getInstance
+    val dateFormat = new SimpleDateFormat("yyyyMMdd")
+    val s = dateFormat.format(calendar.getTime)
+    println("today is : " + s)
+    s
   }
-
 
 
 }

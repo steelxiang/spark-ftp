@@ -50,10 +50,10 @@ object ftp2hdfs_yh {
     var list: ListBuffer[String] =getList
     upload(list)
 
-      }
-
-
     spark.close()
+  }
+
+
 
 
   def upload(list:ListBuffer[String]): Unit ={

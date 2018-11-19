@@ -68,92 +68,17 @@ object ftp2hdfs_yh {
         option("port", port).
         load(path+"/"+filename)
        println(filename)
-          val date=filename.substring(8,15)
-      var source_ds:Dataset[YHtable]=null
 
-      if (filename.startsWith("apk_url")) {
-         source_ds = df.map(t => {
-          val words: Array[String] = t.getString(0).split("\t")
-          val dataSource: Int = 1
-          val URL: String = words(1)
-          val Id: String = words(0)
-          val URL_Time: Int = 1
-          val dt: String = date
-          YHtable(dataSource, URL, Id, URL_Time, dt)
+      val date=filename.substring(8,15)
 
-        }
-        )
-        source_ds
-      }
-      else if (filename.startsWith("cw_url")) {
-        source_ds =df.map(t=>{
-          val words: Array[String] = t.getString(0).split("\t")
-          val dataSource:Int=4
-          val URL:String=words(1)
-          val Id:String=words(0)
-          val URL_Time:Int=1
-          val dt	:String=date
-          YHtable(dataSource,URL,Id,URL_Time,dt)
-
-        }
-        )
-        source_ds
-      }
-      else if (filename.startsWith("dx_url")) {
-        source_ds =df.map(t=>{
-          val words: Array[String] = t.getString(0).split("\t")
-          val dataSource:Int=2
-          val URL:String=words(1)
-          val Id:String=words(0)
-          val URL_Time:Int=1
-          val dt	:String=date
-          YHtable(dataSource,URL,Id,URL_Time,dt)
-
-        }
-        )
-        source_ds
-      }
-      else if (filename.startsWith("gw_url")) {
-        source_ds =df.map(t=>{
-          val words: Array[String] = t.getString(0).split("\t")
-          val dataSource:Int=3
-          val URL:String=words(1)
-          val Id:String=words(0)
-          val URL_Time:Int=1
-          val dt	:String=date
-          YHtable(dataSource,URL,Id,URL_Time,dt)
-
-        }
-        )
-        source_ds
-      }
-      else if (filename.startsWith("sg_url")) {
-        source_ds =df.map(t=>{
-          val words: Array[String] = t.getString(0).split("\t")
-          val dataSource:Int=5
-          val URL:String=words(1)
-          val Id:String=words(0)
-          val URL_Time:Int=1
-          val dt	:String=date
-          YHtable(dataSource,URL,Id,URL_Time,dt)
-
-        }
-        )
-        source_ds
-      }else{
-        null
-      }
+      var source_ds: Dataset[Array[String]] = df.map(t => t.getString(0).split("\t")).filter(t=>t.length==2)
 
 
-
-
-
-
-
-      val table = source_ds.withColumn("date",date_format(unix_timestamp($"dt","yyyyMMdd").cast("timestamp"),"yyyyMMdd")).drop("dt")
-
-      table.show()
-      // table.write.partitionBy("date").insertInto("dpi")
+      if (filename.startsWith("apk_url")) insertData(source_ds,date,1)
+      if (filename.startsWith("cw_url")) insertData(source_ds,date,4)
+      if (filename.startsWith("dx_url")) insertData(source_ds,date,2)
+      if (filename.startsWith("gw_url")) insertData(source_ds,date,3)
+      if (filename.startsWith("sg_url")) insertData(source_ds,date,5)
 
     }
     println("----------list---finish-------------")
@@ -161,6 +86,19 @@ object ftp2hdfs_yh {
 
 
   }
+
+    def insertData(df: Dataset[Array[String]],date:String,datetype:Int)={
+      val source_ds: Dataset[YHtable] =df.map(words=> {
+        val dataSource: Int = datetype
+        val URL: String = words(1)
+        val Id: String = words(0)
+        val URL_Time: Int = 1
+        val dt: String = date
+        YHtable(dataSource, URL, Id, URL_Time, dt)
+      }
+      )
+      source_ds.write.insertInto("")
+    }
 
 
 

@@ -265,7 +265,17 @@ public class SFTPUtil {
     }
 
 
-
+    public static void main(String[] args) throws SftpException {
+        SFTPUtil sftpUtil = new SFTPUtil("yanjiuyuan", "yanjiuyuan@20180827", "10.4.12.186", 22);
+        sftpUtil.login();
+        Vector listFiles = sftpUtil.listFiles("/home/yanjiuyuan/data/");
+        for (int i = 0; i < listFiles.size(); i++) {
+            String[] arr = listFiles.get(i).toString().split("\\s+");
+            String filename = arr[arr.length - 1];
+            System.out.println(filename);
+        }
+        sftpUtil.logout();
+    }
 
 
 }

@@ -44,17 +44,18 @@ case class tableData(commandId	:String ,
                     dataSource:	Int,
                     dt:	String )
 object ftp2hdfs_dpi {
-  val host="192.168.5.200"
-  val userName="root"
-  val password="123456"
-  val port="22"
-  var path="/root/data/"
+  val host="180.100.230.178"
+  val userName="chenzs"
+  val password="Jiangsumisas"
+  val port=14333
+  var path="/home/opt/data/log/"
 
 
   val spark: SparkSession = SparkSession
     .builder()
-    .appName("yangmaodang")
+    .appName("ftp-dpi")
     .config("spark.shuffle.consolidateFiles", true)
+    .config("hive.exec.dynamic.partition.mode", "nonstrict")
     .master("local[2]")
     .enableHiveSupport()
     .getOrCreate()
@@ -70,22 +71,23 @@ object ftp2hdfs_dpi {
       var today= getToday
 
     while(flag){
-       println("hahahhha")
+       println("重新读取列表")
       var list: ListBuffer[String] = ListBuffer[String]()
     try{
 
       list=getList(today)
     }  catch {
-      case ex:Exception =>{today=getToday
-        println("11111111111111111111")
-                  readList.clear()
+      case ex:Exception =>{
+        today=getToday
+        println("读取文件异常")
+        readList.clear()
       }
     }
 
      if(list.size==0){
-       println("newday")
-       today=getToday
-       //readList.clear()
+       println("列表为空")
+
+
      }
 
      else {
@@ -132,34 +134,36 @@ object ftp2hdfs_dpi {
       option("fileType", "txt").
       option("port", port).
       load(path+date+"/"+filename)
-      println(date+" : "+filename)
+      println(Calendar.getInstance.getTime+":文件 "+date+" : "+filename)
 
       //0x01+0x0300+000+M-JS-SZ+XF+001+20181016021000
       val namedate=filename.substring(31,39)
-      val source_ds= df.map(t => {
-        val words: Array[String] = t.getString(0).split("\\|")
-           val UserAccount :String=words(0)
-           val  ProtocolType :String =words(1)
-           val  SrcIP :String =words(2)
-           val   DestIP :String =words(3)
-           val  SrcPort :String =words(4)
-           val  DescPort :String =words(5)
-           val   DomainName :String=new String(Base64.decodeBase64(words(6)))
-           val  URL :String =new String(Base64.decodeBase64(words(7)))
-           val  referer :String= new String(Base64.decodeBase64(words(8)))
-           val  UserAgent :String =new String(Base64.decodeBase64(words(9)))
-            val  Cookie :String =new String(Base64.decodeBase64(words(10)))
-            val  AccessTime :String=words(11)
-          tableData("17",SrcIP,SrcPort,DestIP,DescPort,"","",DomainName,URL,UserAgent,"","",referer,
-          Cookie,"","","","","","","",ProtocolType,1,namedate)
+
+      val arr_ds: Dataset[Array[String]] = df.map(t=>t.getString(0).split("\\|")).filter(t=>t.length==12)
+      val source_ds= arr_ds.map(words => {
+            val UserAccount: String = words(0)
+            val ProtocolType: String = words(1)
+            val SrcIP: String = words(2)
+            val DestIP: String = words(3)
+            val SrcPort: String = words(4)
+            val DescPort: String = words(5)
+            val DomainName: String = new String(Base64.decodeBase64(words(6)))
+            val URL: String = new String(Base64.decodeBase64(words(7)))
+            val referer: String = new String(Base64.decodeBase64(words(8)))
+            val UserAgent: String = new String(Base64.decodeBase64(words(9)))
+            val Cookie: String = new String(Base64.decodeBase64(words(10)))
+            val AccessTime: String = words(11)
+            tableData("17", SrcIP, SrcPort, DestIP, DescPort, "", "", DomainName, URL, UserAgent, "", "", referer,
+              Cookie, "", "", "", "", "", "", "", ProtocolType, 1, namedate)
 
 
       })
 
-      val table: DataFrame = source_ds.withColumn("date",date_format(unix_timestamp($"dt","yyyyMMdd").cast("timestamp"),"yyyyMMdd")).drop("dt")
+    //  val table: DataFrame = source_ds.withColumn("date",date_format(unix_timestamp($"dt","yyyyMMdd").cast("timestamp"),"yyyyMMdd")).drop("dt")
 
-       table.show()
-     // table.write.partitionBy("date").insertInto("dpi")
+      // table.show()
+
+      source_ds.coalesce(1).write.insertInto("url.dpi")
 
     }
    println("----------list---finish-------------")
@@ -174,10 +178,9 @@ object ftp2hdfs_dpi {
   def getList(date:String)= {
 
     try {
-      val client = new SFTPUtil(userName, password, host, 22)
+      val client = new SFTPUtil(userName, password, host, port)
       client.login()
       val filelist: util.Vector[_] = client.listFiles(s"$path$date")
-      client.logout()
       val list:ListBuffer[String]= ListBuffer()
       for (i <- 0 until filelist.size()) {
         val str = filelist.get(i).toString.split("\\s+").last
@@ -186,6 +189,7 @@ object ftp2hdfs_dpi {
 
         }
       }
+      client.logout()
 
       list
     }

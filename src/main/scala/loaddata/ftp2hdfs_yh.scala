@@ -23,17 +23,18 @@ case class YHtable(dataSource :Int,
                    URL_Time:Int,
                    dt	:String)
 object ftp2hdfs_yh {
-  val host="192.168.5.200"
-  val userName="root"
-  val password="123456"
+  val host="10.4.12.186"
+  val userName="yanjiuyuan"
+  val password="yanjiuyuan@20180827"
   val port="22"
-  var path="/root/data/"
+  var path="/home/yanjiuyuan/data"
 
 
   val spark: SparkSession = SparkSession
     .builder()
-    .appName("yangmaodang")
+    .appName("ftp-yh")
     .config("spark.shuffle.consolidateFiles", true)
+    .config("hive.exec.dynamic.partition.mode", "nonstrict")
     .master("local[2]")
     .enableHiveSupport()
     .getOrCreate()

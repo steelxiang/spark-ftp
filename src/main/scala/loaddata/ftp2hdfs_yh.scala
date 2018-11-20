@@ -83,7 +83,7 @@ object ftp2hdfs_yh {
          upload(client,list)
          spark.close()
 
-    System.exit(0)
+    System.exit(1)
 
 
 

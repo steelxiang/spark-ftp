@@ -8,6 +8,7 @@ package Utils;
 import com.jcraft.jsch.*;
 
 import java.io.*;
+import java.util.ArrayList;
 import java.util.Properties;
 import java.util.Vector;
 
@@ -275,6 +276,21 @@ public class SFTPUtil {
             System.out.println(filename);
         }
         sftpUtil.logout();
+    }
+
+    public ArrayList<String> getList(String path) throws SftpException {
+        SFTPUtil sftpUtil = new SFTPUtil(username, password, host, port);
+        sftpUtil.login();
+        Vector listFiles = sftpUtil.listFiles(path);
+        ArrayList<String> list=new ArrayList<>();
+        for (int i = 0; i < listFiles.size(); i++) {
+            String[] arr = listFiles.get(i).toString().split("\\s+");
+            String filename = arr[arr.length - 1];
+            list.add(filename);
+        }
+        sftpUtil.logout();
+
+        return list;
     }
 
 

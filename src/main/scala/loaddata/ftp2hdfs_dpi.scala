@@ -11,7 +11,7 @@ import org.apache.commons.net.util.Base64
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 import org.apache.spark.sql.functions._
 
-
+import scala.collection.mutable
 import scala.collection.mutable._
 
 /**
@@ -20,11 +20,11 @@ import scala.collection.mutable._
   */
 
 
-case class tableData(commandId: String,
+case class tableData(commandId: Int,
                      src_ip: String,
-                     src_port: String,
+                     src_port: Int,
                      dest_ip: String,
-                     dest_port: String,
+                     dest_port: Int,
                      request_time: String,
                      response_time: String,
                      domain: String,
@@ -34,7 +34,7 @@ case class tableData(commandId: String,
                      content_size: String,
                      refer: String,
                      cookie: String,
-                     method: String,
+                     method:String,
                      status: String,
                      proxy_type: String,
                      proxy_ip: String,
@@ -42,6 +42,7 @@ case class tableData(commandId: String,
                      link: String,
                      view: String,
                      transport_protocol: String,
+                     access_time: String,
                      dataSource: Int,
                      dt: String)
 
@@ -58,6 +59,7 @@ object ftp2hdfs_dpi {
     .appName("ftp-dpi")
     .config("spark.shuffle.consolidateFiles", true)
     .config("hive.exec.dynamic.partition.mode", "nonstrict")
+    .config("spark.debug.maxToStringFields", 100)
     .master("local[2]")
     .enableHiveSupport()
     .getOrCreate()
@@ -111,7 +113,7 @@ object ftp2hdfs_dpi {
           println("newday")
 
         } else {
-
+          for(t <- list) println("待传输文件列表： "+t)
           upload(list, today)
         }
       }
@@ -142,25 +144,26 @@ object ftp2hdfs_dpi {
         val ProtocolType: String = words(1)
         val SrcIP: String = words(2)
         val DestIP: String = words(3)
-        val SrcPort: String = words(4)
-        val DescPort: String = words(5)
+        val SrcPort: Int = Integer.parseInt(words(4),16)   //16进制转10进制
+        val DescPort: Int =Integer.parseInt(words(5),16)
         val DomainName: String = new String(Base64.decodeBase64(words(6)))
         val URL: String = new String(Base64.decodeBase64(words(7)))
         val referer: String = new String(Base64.decodeBase64(words(8)))
         val UserAgent: String = new String(Base64.decodeBase64(words(9)))
         val Cookie: String = new String(Base64.decodeBase64(words(10)))
-        val AccessTime: String = words(11)
-        tableData("17", SrcIP, SrcPort, DestIP, DescPort, "", "", DomainName, URL, UserAgent, "", "", referer,
-          Cookie, "", "", "", "", "", "", "", ProtocolType, 1, namedate)
-
+        val AccessTime:String = words(11)
+        tableData(17, SrcIP, SrcPort, DestIP, DescPort, "", "", DomainName, URL, UserAgent, "", "", referer,
+          Cookie, "", "", "", "", "", "", "", ProtocolType,AccessTime, 1, namedate)
 
       })
 
-      //  val table: DataFrame = source_ds.withColumn("date",date_format(unix_timestamp($"dt","yyyyMMdd").cast("timestamp"),"yyyyMMdd")).drop("dt")
+      val table: DataFrame = source_ds.withColumn("date",to_date(unix_timestamp($"dt","yyyyMMdd").cast("timestamp"),"yyyyMMdd")).drop("dt")
 
-      // table.show()
 
-      source_ds.coalesce(1).write.insertInto("url.dpi")
+
+    //  source_ds.show()
+      table.show()
+    //  table.write.insertInto("url.dpi")
 
     }
     println("----------list---finish-------------")

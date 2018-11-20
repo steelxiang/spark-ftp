@@ -19,12 +19,12 @@ import scala.collection.mutable._
   *         2018/11/15
   */
 
-object ftp2hdfs_js {
-  val host = "192.168.5.200"
-  val userName = "root"
-  val password = "123456"
-  val port = "22"
-  var path = "/root/data/"
+object ftp2hdfs_it {
+  val host = "10.4.41.99:21"
+  val userName = "yanjy_lch"
+  val password = "UxGsD1a#,kA"
+  val port = "21"
+  var path = "/data/yhb/pdc_in"  ///data/yhb/url_in
 
 
   val spark: SparkSession = SparkSession
@@ -41,23 +41,23 @@ object ftp2hdfs_js {
   context.setLogLevel("WARN")
   val sqlcontext = spark.sqlContext
   val date = getToday
-
+  val p=""
   def main(args: Array[String]): Unit = {
 
 
-    upload(s"lte_cdpi_url_$date.txt.gzip", 6)
-    upload(s"3g_cdpi_url_$date.txt.gzip", 7)
-    upload(s"lte-$date.txt.gzip", 8)
-    upload(s"cdpi-$date.txt.gzip", 9)
-    upload(s"gdpi-$date.txt.gzip", 10)
-    upload(s"gdpi_url_$date.txt.gzip", 11)
+    upload(p,s"lte_cdpi_url_$date.txt.gzip", 6)
+    upload(p,s"3g_cdpi_url_$date.txt.gzip", 7)
+    upload(p,s"lte-$date.txt.gzip", 8)
+    upload(p,s"cdpi-$date.txt.gzip", 9)
+    upload(p,s"gdpi-$date.txt.gzip", 10)
+    upload(p,s"gdpi_url_$date.txt.gzip", 11)
 
     spark.close()
   }
 
 
-  def upload(filename: String, dataType: Int): Unit = {
-    val df = spark.read.text(s"ftp://$userName:$password@$host$password$filename")
+  def upload(p:String ,filename: String, dataType: Int): Unit = {
+    val df = spark.read.text(s"ftp://$userName:$password@$host$password$p$filename")
     println(filename)
     val value: Dataset[Array[String]] = df.map(t => t.getString(0).split("\t")).filter(t => t.length == 2)
     val table = value.map(words => {

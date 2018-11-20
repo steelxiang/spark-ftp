@@ -1,13 +1,17 @@
 package loaddata
 
 
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util
 import java.util.{Calendar, Date}
 
 import Utils.SFTPUtil
 import com.jcraft.jsch.SftpException
+import loaddata.ftp2hdfs_dpi._
+import org.apache.commons.io.FileUtils
 import org.apache.commons.net.util.Base64
+import org.apache.log4j.Logger
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 import org.apache.spark.sql.functions._
 
@@ -46,14 +50,56 @@ case class tableData(commandId: Int,
                      dataSource: Int,
                      dt: String)
 
+class ftp2hdfs_dpi{
+
+  val logger = Logger.getLogger(classOf[ftp2hdfs_dpi])
+
+  //获取目录列表
+  def getList(client:SFTPUtil,date: String) = {
+
+    try {
+      client.login()
+      val filelist: util.Vector[_] = client.listFiles(s"$path$date")
+      val list: ListBuffer[String] = ListBuffer()
+      for (i <- 0 until filelist.size()) {
+        val str = filelist.get(i).toString.split("\\s+").last
+        if (!".".equals(str) && !"..".equals(str)) {
+          list.append(str)
+        }
+      }
+      client.logout()
+
+      list
+    }
+    catch {
+      case ex: SftpException => throw new Exception("listFiles exception")
+    }
+
+  }
+
+  //获取当天日期
+  def getToday: String = {
+    val calendar = Calendar.getInstance
+    val dateFormat = new SimpleDateFormat("yyyyMMdd")
+    val s = dateFormat.format(calendar.getTime)
+    println("today is : " + s)
+    s
+  }
+
+
+
+
+
+}
+
+
 object ftp2hdfs_dpi {
   val host = "180.100.230.178"
   val userName = "chenzs"
   val password = "Jiangsumisas"
   val port = 14333
   var path = "/home/opt/data/log/"
-
-
+  val localpath="/home/misas_dev/"
   val spark: SparkSession = SparkSession
     .builder()
     .appName("ftp-dpi")
@@ -67,23 +113,26 @@ object ftp2hdfs_dpi {
   import spark.implicits._
 
   val context = spark.sparkContext
-  context.setLogLevel("WARN")
-  val sqlcontext = spark.sqlContext
+
 
   def main(args: Array[String]): Unit = {
+
+
+    val dpi = new ftp2hdfs_dpi
+    val client=new SFTPUtil(userName,password,host,port)
+
     val flag = true
-    val readList = new util.ArrayList[String]() //存放当天已读过的文件列表
-    var today = getToday
+    var readList = new util.ArrayList[String]() //存放当天已读过的文件列表
+    var today = dpi.getToday
 
     while (flag) {
-      println("重新读取列表")
+     dpi.logger.info("读取列表")
       var list: ListBuffer[String] = ListBuffer[String]()
       try {
-
-        list = getList(today)
+        list = dpi.getList(client,today)
       } catch {
         case ex: Exception => {
-          today = getToday
+          today = dpi.getToday
           println("读取文件异常")
           readList.clear()
         }
@@ -109,12 +158,12 @@ object ftp2hdfs_dpi {
 
 
         if (list.size == 0) {
-          today = getToday
-          println("newday")
+          today = dpi.getToday
+          dpi.logger.info("------newday--------")
 
         } else {
-          for(t <- list) println("待传输文件列表： "+t)
-          upload(list, today)
+          for(t <- list) dpi.logger.info("待传输文件列表： "+t)
+          upload(client,list, today)
         }
       }
     }
@@ -122,22 +171,19 @@ object ftp2hdfs_dpi {
     spark.close()
   }
 
-  def upload(list: ListBuffer[String], date: String): Unit = {
+
+  def upload(client:SFTPUtil,list: ListBuffer[String], date: String): Unit = {
+
+        client.login()
 
     for (filename <- list) {
-      val df: DataFrame = spark.read.
-        format("com.springml.spark.sftp").
-        option("host", host).
-        option("username", userName).
-        option("password", password).
-        option("fileType", "txt").
-        option("port", port).
-        load(path + date + "/" + filename)
-      println(Calendar.getInstance.getTime + ":文件 " + date + " : " + filename)
+      client.download(path+date,filename,localpath+filename)
 
+      val df: DataFrame = spark.read.text(localpath+filename)
+
+      println(Calendar.getInstance.getTime + ":文件 " + date + " : " + filename)
       //0x01+0x0300+000+M-JS-SZ+XF+001+20181016021000
       val namedate = filename.substring(31, 39)
-
       val arr_ds: Dataset[Array[String]] = df.map(t => t.getString(0).split("\\|")).filter(t => t.length == 12)
       val source_ds = arr_ds.map(words => {
         val UserAccount: String = words(0)
@@ -161,50 +207,20 @@ object ftp2hdfs_dpi {
 
 
 
-    //  source_ds.show()
+      //  source_ds.show()
       table.show()
-    //  table.write.insertInto("url.dpi")
+      //  table.write.insertInto("url.dpi")
+      FileUtils.deleteQuietly(new File(localpath+filename));
 
     }
     println("----------list---finish-------------")
-
-
-  }
-
-
-  //获取目录列表
-  def getList(date: String) = {
-
-    try {
-      val client = new SFTPUtil(userName, password, host, port)
-      client.login()
-      val filelist: util.Vector[_] = client.listFiles(s"$path$date")
-      val list: ListBuffer[String] = ListBuffer()
-      for (i <- 0 until filelist.size()) {
-        val str = filelist.get(i).toString.split("\\s+").last
-        if (!".".equals(str) && !"..".equals(str)) {
-          list.append(str)
-
-        }
-      }
-      client.logout()
-
-      list
-    }
-    catch {
-      case ex: SftpException => throw new Exception("listFiles exception")
-    }
+   client.logout()
 
   }
 
-  //获取当天日期
-  def getToday: String = {
-    val calendar = Calendar.getInstance
-    val dateFormat = new SimpleDateFormat("yyyyMMdd")
-    val s = dateFormat.format(calendar.getTime)
-    println("today is : " + s)
-    s
-  }
+
+
+
 }
 
 

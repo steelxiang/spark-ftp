@@ -268,27 +268,22 @@ public class SFTPUtil {
 
     public static void main(String[] args) throws SftpException {
         SFTPUtil sftpUtil = new SFTPUtil("yanjiuyuan", "yanjiuyuan@20180827", "10.4.12.186", 22);
-        sftpUtil.login();
-        Vector listFiles = sftpUtil.listFiles("/home/yanjiuyuan/data/");
-        for (int i = 0; i < listFiles.size(); i++) {
-            String[] arr = listFiles.get(i).toString().split("\\s+");
-            String filename = arr[arr.length - 1];
-            System.out.println(filename);
-        }
-        sftpUtil.logout();
+
+        ArrayList<String> list = sftpUtil.getList(sftpUtil, "/home/yanjiuyuan/data");
+
     }
 
-    public ArrayList<String> getList(String path) throws SftpException {
-        SFTPUtil sftpUtil = new SFTPUtil(username, password, host, port);
-        sftpUtil.login();
-        Vector listFiles = sftpUtil.listFiles(path);
+    public ArrayList<String> getList(SFTPUtil client,String path) throws SftpException {
+
+        client.login();
+        Vector listFiles = client.listFiles(path);
         ArrayList<String> list=new ArrayList<>();
         for (int i = 0; i < listFiles.size(); i++) {
             String[] arr = listFiles.get(i).toString().split("\\s+");
             String filename = arr[arr.length - 1];
             list.add(filename);
         }
-        sftpUtil.logout();
+        client.logout();
 
         return list;
     }

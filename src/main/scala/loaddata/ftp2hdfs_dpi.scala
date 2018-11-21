@@ -1,15 +1,18 @@
 package loaddata
 
 
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util
 import java.util.{Calendar, Date}
 
 import Utils.SFTPUtil
 import com.jcraft.jsch.SftpException
+import org.apache.commons.io.FileUtils
 import org.apache.commons.net.util.Base64
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 import org.apache.spark.sql.functions._
+import org.apache.log4j.Logger
 
 import scala.collection.mutable
 import scala.collection.mutable._
@@ -46,13 +49,20 @@ case class tableData(commandId: Int,
                      dataSource: Int,
                      dt: String)
 
+class ftp2hdfs_dpi{
+
+  val logger = Logger.getLogger(classOf[ftp2hdfs_dpi])
+
+}
 object ftp2hdfs_dpi {
+
+   val dpi = new ftp2hdfs_dpi
   val host = "180.100.230.178"
   val userName = "chenzs"
   val password = "Jiangsumisas"
   val port = 14333
   var path = "/home/opt/data/log/"
-
+  val localpath="/home/misas_dev/data2hdfs/tmp/"
 
   val spark: SparkSession = SparkSession
     .builder()
@@ -72,11 +82,12 @@ object ftp2hdfs_dpi {
 
   def main(args: Array[String]): Unit = {
     val flag = true
-    val readList = new util.ArrayList[String]() //存放当天已读过的文件列表
     var today = getToday
-
     while (flag) {
-      println("重新读取列表")
+
+      var readList:util.List[String] =readsaveList(today) //存放当天已读过的文件列表
+
+      dpi.logger.warn("读取列表")
       var list: ListBuffer[String] = ListBuffer[String]()
       try {
 
@@ -84,14 +95,13 @@ object ftp2hdfs_dpi {
       } catch {
         case ex: Exception => {
           today = getToday
-          println("读取文件异常")
-          readList.clear()
+          dpi.logger.warn("读取文件异常")
+
         }
       }
 
       if (list.size == 0) {
-        println("列表为空")
-
+        dpi.logger.warn("列表为空")
 
       }
 
@@ -100,21 +110,27 @@ object ftp2hdfs_dpi {
         list.foreach(t => {
           if (readList.contains(t)) {
             list = list - t
-            println("已移除")
+            dpi.logger.warn("已移除 "+t)
 
           } else {
             readList.add(t)
           }
         })
 
-
         if (list.size == 0) {
           today = getToday
-          println("newday")
+          dpi.logger.warn("newday")
 
         } else {
-          for(t <- list) println("待传输文件列表： "+t)
-          upload(list, today)
+          try{
+
+            upload(list, today)
+          }catch {
+            case ex: Exception => {
+              dpi.logger.warn("读取文件异常")
+              today = getToday
+            }
+          }
         }
       }
     }
@@ -125,6 +141,7 @@ object ftp2hdfs_dpi {
   def upload(list: ListBuffer[String], date: String): Unit = {
 
     for (filename <- list) {
+      dpi.logger.warn("开始加载： "+filename)
       val df: DataFrame = spark.read.
         format("com.springml.spark.sftp").
         option("host", host).
@@ -133,7 +150,7 @@ object ftp2hdfs_dpi {
         option("fileType", "txt").
         option("port", port).
         load(path + date + "/" + filename)
-      println(Calendar.getInstance.getTime + ":文件 " + date + " : " + filename)
+    //  println(Calendar.getInstance.getTime + ":文件 " + date + " : " + filename)
 
       //0x01+0x0300+000+M-JS-SZ+XF+001+20181016021000
       val namedate = filename.substring(31, 39)
@@ -162,11 +179,15 @@ object ftp2hdfs_dpi {
 
 
     //  source_ds.show()
-      table.show()
-    //  table.write.insertInto("url.dpi")
-
+     // table.show()
+      dpi.logger.warn("开始插入： "+filename)
+      table.write.insertInto("url.dpi")
+      dpi.logger.warn("插入完成： "+filename)
+      FileUtils.deleteQuietly(new File("/tmp/"+filename))
+      dpi.logger.warn("删除临时文件： "+filename)
+      writeList(filename,date)
     }
-    println("----------list---finish-------------")
+     dpi.logger.warn("----------list---finish-------------")
 
 
   }
@@ -202,8 +223,30 @@ object ftp2hdfs_dpi {
     val calendar = Calendar.getInstance
     val dateFormat = new SimpleDateFormat("yyyyMMdd")
     val s = dateFormat.format(calendar.getTime)
-    println("today is : " + s)
+    dpi.logger.warn("today is : " + s)
     s
+  }
+
+
+
+  def readsaveList(date:String)={
+    val f=new File(localpath+date)
+    if(!f.exists()) f.createNewFile()
+    val list: util.List[String] = FileUtils.readLines(f)
+    list
+  }
+
+
+
+  def writeList(name:String,date:String)={
+
+
+    FileUtils.writeStringToFile(new File(localpath+date),name+"\n",true)
+
+
+
+
+
   }
 }
 

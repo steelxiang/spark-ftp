@@ -1,7 +1,7 @@
 package loaddata
 
 
-import java.io.File
+import java.io._
 import java.text.SimpleDateFormat
 import java.util
 import java.util.{Calendar, Date}
@@ -11,12 +11,15 @@ import com.jcraft.jsch.SftpException
 import loaddata.ftp2hdfs_dpi._
 import org.apache.commons.io.FileUtils
 import org.apache.commons.net.util.Base64
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.{FSDataOutputStream, FileSystem, Path}
 import org.apache.log4j.Logger
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 import org.apache.spark.sql.functions._
 
 import scala.collection.mutable
 import scala.collection.mutable._
+import scala.io.Source
 
 /**
   * @author xiang
@@ -86,9 +89,22 @@ class ftp2hdfs_dpi{
     s
   }
 
+  def readList(date:String)={
+
+    val f=new File(localpath+date)
+    if(!f.exists()) f.createNewFile()
+
+   val list = FileUtils.readLines(f)
+
+    list
+  }
+
+  def writeList(name:String,date:String)={
+
+    FileUtils.writeStringToFile(new File(localpath+date),name,true)
 
 
-
+  }
 
 }
 
@@ -99,7 +115,7 @@ object ftp2hdfs_dpi {
   val password = "Jiangsumisas"
   val port = 14333
   var path = "/home/opt/data/log/"
-  val localpath="/home/misas_dev/"
+  val localpath="/home/misas_dev/data2hdfs/tmp/"
   val spark: SparkSession = SparkSession
     .builder()
     .appName("ftp-dpi")
@@ -114,18 +130,18 @@ object ftp2hdfs_dpi {
 
   val context = spark.sparkContext
 
-
+  val dpi = new ftp2hdfs_dpi
   def main(args: Array[String]): Unit = {
 
 
-    val dpi = new ftp2hdfs_dpi
     val client=new SFTPUtil(userName,password,host,port)
-
     val flag = true
-    var readList = new util.ArrayList[String]() //存放当天已读过的文件列表
     var today = dpi.getToday
 
     while (flag) {
+
+      var readList = dpi.readList(today) //存放当天已读过的文件列表
+
      dpi.logger.info("读取列表")
       var list: ListBuffer[String] = ListBuffer[String]()
       try {
@@ -150,19 +166,16 @@ object ftp2hdfs_dpi {
           if (readList.contains(t)) {
             list = list - t
             println("已移除")
-
-          } else {
-            readList.add(t)
           }
         })
 
-
         if (list.size == 0) {
           today = dpi.getToday
+          readList.clear()
           dpi.logger.info("------newday--------")
 
         } else {
-          for(t <- list) dpi.logger.info("待传输文件列表： "+t)
+
           upload(client,list, today)
         }
       }
@@ -174,12 +187,41 @@ object ftp2hdfs_dpi {
 
   def upload(client:SFTPUtil,list: ListBuffer[String], date: String): Unit = {
 
+    val  fsPath = "/user/misas_dev/data/tmp/"
+    var conf = new Configuration
+    var fs = FileSystem.get(conf)
+
+    conf.set("fs.defaultFS", "hdfs://172.31.20.176:8020")
+
+    conf.set("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem")
+    System.setProperty("HADOOP_USER_NAME", "misas_dev")
+
+
         client.login()
 
     for (filename <- list) {
-      client.download(path+date,filename,localpath+filename)
+      dpi.logger.info("开始下载文件： " + filename)
+      val stream: InputStream = client.download(path + date, filename)
+     // val read = new BufferedReader(new InputStreamReader(stream));
+      val source = Source.fromInputStream(stream)
+      val hdstream: FSDataOutputStream = fs.create(new Path(fsPath + filename),true)
 
-      val df: DataFrame = spark.read.text(localpath+filename)
+      val iterator = source.getLines()
+     while (iterator.hasNext){
+       val line = iterator.next()
+       hdstream.writeBytes(line)
+     }
+
+      stream.close()
+      hdstream.flush()
+      hdstream.close()
+
+
+      dpi.logger.info("下载文件完成： "+filename)
+
+
+
+      val df: DataFrame = spark.read.text(fsPath+filename)
 
       println(Calendar.getInstance.getTime + ":文件 " + date + " : " + filename)
       //0x01+0x0300+000+M-JS-SZ+XF+001+20181016021000
@@ -205,16 +247,19 @@ object ftp2hdfs_dpi {
 
       val table: DataFrame = source_ds.withColumn("date",to_date(unix_timestamp($"dt","yyyyMMdd").cast("timestamp"),"yyyyMMdd")).drop("dt")
 
-
-
       //  source_ds.show()
-      table.show()
-      //  table.write.insertInto("url.dpi")
-      FileUtils.deleteQuietly(new File(localpath+filename));
+      //table.show()
+      dpi.logger.info("开始插入文件： "+filename)
+        table.write.insertInto("url.dpi")
+      dpi.logger.info("插入完成： "+filename)
+     fs.delete(new Path(fsPath+filename),true)
+      dpi.logger.info("删除临时文件： "+filename)
+       dpi.writeList(filename,date)
 
     }
     println("----------list---finish-------------")
    client.logout()
+    fs.close()
 
   }
 

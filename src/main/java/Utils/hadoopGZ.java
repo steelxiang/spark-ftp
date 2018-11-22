@@ -39,6 +39,7 @@ public class hadoopGZ {
                 String newfile = oldpath + ".gzip";
                 if (fileStatus.getLen() == 0) {
                     fs.delete(oldpath, true);
+
                     System.out.println("删除空文件： "+oldpath);
                     continue;
                 } else {

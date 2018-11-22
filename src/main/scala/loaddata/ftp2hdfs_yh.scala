@@ -117,7 +117,7 @@ object ftp2hdfs_yh {
   def getYester: String = {
     val calendar = Calendar.getInstance
     val dateFormat = new SimpleDateFormat("yyyyMMdd")
-        calendar.set(Calendar.DATE,-1)
+        calendar.add(Calendar.DATE,-1)
     val s = dateFormat.format(calendar.getTime)
     dpi.logger.warn("yestoday is : " + s)
     s

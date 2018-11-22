@@ -41,11 +41,11 @@ object test{
 
   def main(args: Array[String]): Unit = {
 
-    val value: Dataset[String] = spark.read.textFile("/user/misas_dev/data/YH/apk_url/apk_url_20181112.txt.gz")
-    value.show()
     val listBuffer = getList()
 
-   listBuffer.foreach(t=>println(t))
+    listBuffer.foreach(t=>println(t))
+    val value: Dataset[String] = spark.read.textFile("/user/misas_dev/data/YH/apk_url/apk_url_20181112.txt.gz")
+    value.show()
 
   }
 

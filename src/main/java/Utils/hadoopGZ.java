@@ -29,7 +29,7 @@ public class hadoopGZ {
 //       // System.setProperty("HADOOP_USER_NAME", "misas_dev");
 //        System.setProperty("HADOOP_USER_NAME", "root");
 //        fs = FileSystem.get(conf);
-//        String FSpath="/data";
+//        String FSpath="/data"
 //        RemoteIterator<LocatedFileStatus> listFiles = fs.listLocatedStatus(new Path(FSpath));
 //
 //

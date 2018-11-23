@@ -7,6 +7,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.log4j.Logger;
 
 import java.io.*;
 import java.net.MalformedURLException;
@@ -26,13 +27,18 @@ public class FtpUtils {
     public String password = "UxGsD1a#,kA";
 
     public FTPClient ftpClient = null;
+    public String localdir="/tmp/";
+
+    public String fspath="/user/misas_dev/data/tmp/";
+
+
 
     /**
      * 初始化ftp服务器
      */
     public void initFtpClient() {
         ftpClient = new FTPClient();
-        ftpClient.setControlEncoding("utf-8");
+        ftpClient.setControlEncoding("GB2312");//GB2312  utf-8
         try {
             System.out.println("connecting...ftp服务器:"+this.hostname+":"+this.port);
             ftpClient.connect(hostname, port); //连接ftp服务器
@@ -74,15 +80,26 @@ public class FtpUtils {
      * @return */
     public  void downloadFile(FileSystem fs,String pathname, String filename,String fsname) throws IOException {
 
-        Path p=new Path("/user/misas_dev/data/tmp/"+fsname);
-        FSDataOutputStream outputStream = fs.create(p,true);
-
+        //先下载到本地临时文件/tmp/
         initFtpClient();
         System.out.println("开始下载文件 "+filename);
-        ftpClient.retrieveFile(pathname+filename, outputStream);
-        System.out.println("下载完成 "+filename);
-        outputStream.flush();
-        outputStream.close();
+         File localfile=new File(localdir+filename);
+         if(!localfile.exists()){
+             localfile.createNewFile();
+         }
+
+        FileOutputStream fos=new FileOutputStream(localfile);
+        ftpClient.retrieveFile(pathname+filename, fos);
+        System.out.println("本地下载完成："+filename);
+        fos.flush();
+        fos.close();
+
+        Path p=new Path(fspath+fsname);
+
+       fs.copyFromLocalFile(new Path(localdir+filename) ,p );
+
+        System.out.println("上传hdfs完成 "+filename);
+
         ftpClient.logout();
         fs.close();
     }

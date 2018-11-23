@@ -62,7 +62,7 @@ object ftp2hdfs_dpi {
   val password = "Jiangsumisas"
   val port = 14333
   var path = "/home/opt/data/log/"
-  val localpath="/home/misas_dev/data2hdfs/tmp/"
+  val localpath="/home/misas_dev/data2hdfs/tmp/dpi/"
 
   val spark: SparkSession = SparkSession
     .builder()

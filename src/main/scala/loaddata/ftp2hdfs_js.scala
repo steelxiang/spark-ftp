@@ -58,9 +58,11 @@ object ftp2hdfs_js {
     val flag = true
 
       js.logger.warn("读取列表")
-       val list = getList
-       list.foreach(t=>println(t))
-    upload(list)
+
+    spark.read.text("d:\\cdpi-20181121.txt.gz").show()
+    //   val list = getList
+    //   list.foreach(t=>println(t))
+   // upload(list)
     spark.close()
   }
 
@@ -95,12 +97,10 @@ object ftp2hdfs_js {
 
      val table: DataFrame = frame.withColumn("date",to_date(unix_timestamp($"dt","yyyyMMdd").cast("timestamp"),"yyyyMMdd")).drop("dt")
 
-         result.union(table)
-
       //  source_ds.show()
       // table.show()
       js.logger.warn("开始插入： "+filename)
-     // table.write.insertInto("url.dpi")
+      table.write.mode("append").insertInto("url.apk")
       js.logger.warn("插入完成： "+filename)
       FileUtils.deleteQuietly(new File("/tmp/"+filename))
       js.logger.warn("删除临时文件： "+filename)

@@ -11,6 +11,8 @@ import Utils.SFTPUtil
 import com.jcraft.jsch.SftpException
 import loaddata.ftp2hdfs_dpi.dpi
 import org.apache.commons.io.FileUtils
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.{FileSystem, LocatedFileStatus, Path, RemoteIterator}
 import org.apache.log4j.Logger
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 import org.apache.spark.sql.functions._
@@ -34,11 +36,20 @@ class ftp2hdfs_yh{
 object ftp2hdfs_yh {
 
   val yh = new ftp2hdfs_yh
-  val host="10.4.12.186"
-  val userName="yanjiuyuan"
-  val password="yanjiuyuan@20180827"
-  val port=22
-  var path="/home/yanjiuyuan/data"
+//  val host="10.4.12.186"
+//  val userName="yanjiuyuan"
+//  val password="yanjiuyuan@20180827"
+//  val port=22
+//  var path="/home/yanjiuyuan/data"
+
+  var fs: FileSystem = null
+  var conf = new Configuration
+  val fsPath = "/user/misas_dev/data/tmp/yh/"
+
+  conf.set("fs.defaultFS", "hdfs://172.31.20.176:8020")
+  conf.set("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem")
+  System.setProperty("HADOOP_USER_NAME", "misas_dev")
+  fs = FileSystem.get(conf)
 
   val spark: SparkSession = SparkSession
     .builder()
@@ -55,30 +66,20 @@ object ftp2hdfs_yh {
       context.setLogLevel("WARN")
 
   def main(args: Array[String]): Unit = {
-       val yestoday=getYester
-    val apk=s"apk_url_$yestoday.txt.gz"
-    val cw= s"cw_url_$yestoday.txt.gz"
-    val dx=s"dx_url_$yestoday.txt.gz"
-    val gw=s"gw_url_$yestoday.txt.gz"
-    val sg=s"sg_url_$yestoday.txt.gz"
-      var list=ListBuffer[String](apk,cw,dx,gw,sg)
 
+    var list=getList
          upload(list)
+
          spark.close()
   }
+
 
   def upload(list:ListBuffer[String]): Unit ={
 
     for(filename <-list){
       yh.logger.warn("开始加载 "+filename)
-      val df: DataFrame = spark.read.
-        format("com.springml.spark.sftp").
-        option("host",host).
-        option("username", userName).
-        option("password", password).
-        option("fileType", "txt").
-        option("port", port).
-        load(path+"/"+filename)
+
+      val df: DataFrame = spark.read.text(fsPath+filename)
 
       var date=filename.substring(7,15)
       val source_ds: Dataset[Array[String]] = df.map(t => t.getString(0).split("\t")).filter(t=>t.length==2)
@@ -88,8 +89,9 @@ object ftp2hdfs_yh {
       if (filename.startsWith("dx_url"))  insertData(source_ds,date,2)
       if (filename.startsWith("gw_url"))  insertData(source_ds,date,3)
       if (filename.startsWith("sg_url"))  insertData(source_ds,date,5)
-      FileUtils.deleteQuietly(new File("/tmp/"+filename))
+      fs.delete(new Path(fsPath+filename),true)
       yh.logger.warn("删除临时文件： "+filename)
+
     }
     yh.logger.warn("----------list---finish-------------")
   }
@@ -108,7 +110,7 @@ object ftp2hdfs_yh {
 
      table.show()
       yh.logger.warn("开始插入数据")
-      //table.write.insertInto("url.apk")
+      table.write.insertInto("url.apk")
       yh.logger.warn("插入完毕")
 
     }
@@ -121,6 +123,19 @@ object ftp2hdfs_yh {
     val s = dateFormat.format(calendar.getTime)
     dpi.logger.warn("yestoday is : " + s)
     s
+  }
+
+
+  def getList ={
+    val list=ListBuffer[String]()
+    val listStatus: RemoteIterator[LocatedFileStatus] = fs.listFiles(new Path(fsPath),true)
+
+    while (listStatus.hasNext){
+            val path: Path = listStatus.next().getPath
+          list.append(path.getName)
+
+          }
+    list
   }
 
 }

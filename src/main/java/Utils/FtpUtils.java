@@ -106,11 +106,14 @@ public class FtpUtils {
 
 
 
-//    public static void main(String[] args) {
+    public static void main(String[] args) {
+        System.out.println("DES2018111315593351126FX014.txt".substring(3,11));
+
+
 //        FtpUtils ftp =new FtpUtils();
 //        //ftp.uploadFile("ftpFile/data", "123.docx", "E://123.docx");
 //        //ftp.downloadFile("ftpFile/data", "123.docx", "F://");
 //      //  ftp.downloadFile("/data/yhb/url_in", "cdpi-20180428.txt.gzip", "d:\\");
 //        System.out.println("ok");
-//    }
+    }
 }

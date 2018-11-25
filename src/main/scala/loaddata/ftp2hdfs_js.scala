@@ -1,15 +1,18 @@
 package loaddata
 
 
-import java.io.File
+import java.io.{BufferedReader, File, FileReader, IOException}
 import java.text.SimpleDateFormat
 import java.util
 import java.util.{Calendar, Date}
 
 import Utils.SFTPUtil
 import com.jcraft.jsch.SftpException
+import loaddata.ftp2hdfs_dpi.{dpi, localpath}
 import org.apache.commons.io.FileUtils
 import org.apache.commons.net.util.Base64
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs._
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 import org.apache.spark.sql.functions._
 import org.apache.log4j.Logger
@@ -35,8 +38,10 @@ object ftp2hdfs_js {
   val userName = "root"
   val password = "Hg!35#89s"
   val port = 22
-  var path = "/data1/Data/ApkUrlData/apkData_JS"
-  val localpath="/home/misas_dev/data2hdfs/tmp/"
+  var ftpPath = "/data1/Data/ApkUrlData/apkData_JS"
+  val localpath="/home/misas_dev/data2hdfs/tmp/js/filelist"
+  val locatmp="/home/misas_dev/data2hdfs/tmp/js/"
+  val fsPath="/user/misas_dev/data/tmp/js/"
 
   val spark: SparkSession = SparkSession
     .builder()
@@ -57,39 +62,60 @@ object ftp2hdfs_js {
   def main(args: Array[String]): Unit = {
     val flag = true
 
-      js.logger.warn("读取列表")
+    val conf = new Configuration
+    conf.set("fs.defaultFS", "hdfs://172.31.20.176:8020")
+    System.setProperty("HADOOP_USER_NAME", "misas_dev")
+    val fs: FileSystem = FileSystem.get(conf)
 
-    spark.read.text("d:\\cdpi-20181121.txt.gz").show()
-    //   val list = getList
-    //   list.foreach(t=>println(t))
-   // upload(list)
+    js.logger.warn("读取列表")
+    var readList = readsaveList()
+       var list = getList
+    //判断文件是否已上传
+    list.foreach(t=>{
+      if (readList.contains(t)) {
+        list = list - t
+        dpi.logger.warn("已移除 "+t)
+
+      } else {
+        readList.add(t)
+      }
+
+    })
+
+    //下载到本地
+    list.foreach(t=>{
+      down2local(t,locatmp+t)
+    })
+
+
+    list.foreach(t=>{
+      append(fs,locatmp+t,fsPath+t.substring(3,11))
+    })
+
+    val fslist = getFslist(fs,fsPath)
+
+
+    save2hive(fs,fslist)
+
+
+
     spark.close()
   }
 
-  def upload(list: ListBuffer[String]): Unit = {
+  def save2hive(fs:FileSystem,list: ListBuffer[String]): Unit = {
 
     var result:DataFrame=null
     for (filename <- list) {
       js.logger.warn("开始加载： "+filename)
-      val df: DataFrame = spark.read.
-        format("com.springml.spark.sftp").
-        option("host", host).
-        option("username", userName).
-        option("password", password).
-        option("fileType", "txt").
-        option("port", port).
-        load(path +"/" + filename)
-
-      //DES2018111315593351126FX014.txt
-      val namedate = filename.substring(3, 11)
+      val df: DataFrame = spark.read.load(fsPath + filename)
 
           val frame = df.map(t => {
 
             val dataSource: Int = 12
             val URL: String =t.getString(0)
-            val Id: String = ""
+            val Id: String = t.getString(0)
             val URL_Time: Int =1
-            val dt: String = namedate
+            val dt: String = filename
             YHtable(dataSource, URL, Id, URL_Time, dt)
 
           }
@@ -97,12 +123,13 @@ object ftp2hdfs_js {
 
      val table: DataFrame = frame.withColumn("date",to_date(unix_timestamp($"dt","yyyyMMdd").cast("timestamp"),"yyyyMMdd")).drop("dt")
 
-      //  source_ds.show()
+
       // table.show()
       js.logger.warn("开始插入： "+filename)
-      table.write.mode("append").insertInto("url.apk")
+      table.write.insertInto("url.apk")
       js.logger.warn("插入完成： "+filename)
-      FileUtils.deleteQuietly(new File("/tmp/"+filename))
+
+      fs.delete(new Path(fsPath + filename),true)
       js.logger.warn("删除临时文件： "+filename)
 
     }
@@ -118,8 +145,8 @@ object ftp2hdfs_js {
     try {
       val client = new SFTPUtil(userName, password, host, port)
       client.login()
-      val filelist: util.Vector[_] = client.listFiles(path)
-      val list: ListBuffer[String] = ListBuffer()
+      val filelist: util.Vector[_] = client.listFiles(ftpPath)
+      var list: ListBuffer[String] = ListBuffer()
       for (i <- 0 until filelist.size()) {
         val str = filelist.get(i).toString.split("\\s+").last
         if (str.endsWith(".txt")) {
@@ -139,11 +166,59 @@ object ftp2hdfs_js {
 
 
 
+//读取已经上传文件那列表
+  def readsaveList()={
+    val f=new File(localpath)
+    if(!f.exists()) f.createNewFile()
+    val list: util.List[String] = FileUtils.readLines(f)
+    list
+  }
 
 
+  @throws[IOException]
+  def append(fs:FileSystem ,localpath: String, FSpath: String): Unit = {
+    val path = new Path(FSpath)
+    var append: FSDataOutputStream  = null
+    if (fs.exists(path)) {
+      append = fs.append(path)
+    }
+    else {
+      append = fs.create(path)
+
+    }
+    val reader = new BufferedReader(new FileReader(localpath))
+    var line = " "
+    while ((line = reader.readLine)!=null ) {
+      line = line + "\n"
+      append.writeBytes(line)
+
+      }
+    //删除本地文件
+    FileUtils.deleteQuietly(new File(localpath))
+      append.flush()
+      append.close()
+    }
 
 
+  def down2local(filename:String,localPath:String): Unit ={
+    val client = new SFTPUtil(userName, password, host, port)
+    client.login()
+    client.download(ftpPath,filename,localPath)
+    client.logout()
 
+
+  }
+
+  def getFslist(fs:FileSystem,fsPath:String)={
+    val fileList: RemoteIterator[LocatedFileStatus] = fs.listLocatedStatus(new Path(fsPath))
+    var list: ListBuffer[String] = ListBuffer()
+    while(fileList.hasNext){
+      val name: String = fileList.next().getPath.getName
+      list.append(name)
+    }
+    list
+
+  }
 
 }
 

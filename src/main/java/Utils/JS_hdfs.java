@@ -1,11 +1,14 @@
 package Utils;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.log4j.Logger;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -18,7 +21,9 @@ import java.util.Calendar;
 public class JS_hdfs {
 
 
+
     public static FileSystem fs;
+    public  static  Logger logger = Logger.getLogger(JS_hdfs.class);
 
     public static void main(String[] args) throws IOException {
 
@@ -29,14 +34,16 @@ public class JS_hdfs {
         String date = getDate();
         String localpath = "/data1/Data/ApkUrlData/apkData_JS_TMP/" + date + ".txt";
         String Fspath = "/user/misas_dev/data/JS/apkurl/" + date.substring(0, 6);
-        append(localpath, Fspath);
+       // append(localpath, Fspath);
 
         fs.close();
     }
 
     //DES2018111315593351126FX014.txt
-    public static void append(String localpath, String FSpath) throws IOException {
+    public static void append(FileSystem fs,String localpath, String FSpath) throws IOException {
 
+
+        logger.warn("上传文件："+localpath);
         Path path = new Path(FSpath);
         FSDataOutputStream append = null;
         if (fs.exists(path)) {
@@ -59,6 +66,8 @@ public class JS_hdfs {
         }
         append.flush();
         append.close();
+        FileUtils.deleteQuietly(new File(localpath));
+        logger.warn("删除临时文件："+localpath);
 
     }
 

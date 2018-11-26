@@ -69,8 +69,7 @@ object ftp2hdfs_yh {
 
     var list=getList
          upload(list)
-
-         spark.close()
+    spark.close()
   }
 
 
@@ -114,16 +113,6 @@ object ftp2hdfs_yh {
       yh.logger.warn("插入完毕")
 
     }
-
-
-  def getYester: String = {
-    val calendar = Calendar.getInstance
-    val dateFormat = new SimpleDateFormat("yyyyMMdd")
-        calendar.add(Calendar.DATE,-1)
-    val s = dateFormat.format(calendar.getTime)
-    dpi.logger.warn("yestoday is : " + s)
-    s
-  }
 
 
   def getList ={

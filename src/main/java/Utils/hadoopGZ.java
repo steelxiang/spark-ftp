@@ -24,37 +24,16 @@ public class hadoopGZ {
 
     public static void main(String[] args) throws Exception {
 
-       // conf.set("fs.defaultFS", "hdfs://172.31.20.176:8020");
-        conf.set("fs.defaultFS", "hdfs://192.168.5.200:9000");
+        conf.set("fs.defaultFS", "hdfs://172.31.20.176:8020");
         conf.set("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem");
-       // System.setProperty("HADOOP_USER_NAME", "misas_dev");
-        System.setProperty("HADOOP_USER_NAME", "root");
+      System.setProperty("HADOOP_USER_NAME", "misas_dev");
+      //  System.setProperty("HADOOP_USER_NAME", "root");
         fs = FileSystem.get(conf);
         String FSpath="/data";
-        RemoteIterator<LocatedFileStatus> listFiles = fs.listLocatedStatus(new Path(FSpath));
 
+          //unGzipFile(fs,"/user/misas_dev/data/tmp/cdpi-20181121.txt.gzip" , "/user/misas_dev/data/tmp/cdpi-20181121.txt");
+        unGzip("e:\\cdpi-20181121.gz","e:\\cdpi");
 
-        while (listFiles.hasNext()){
-           LocatedFileStatus next = listFiles.next();
-           Path path = next.getPath();
-           System.out.println("文件夹： "+path);
-            RemoteIterator<LocatedFileStatus> iterator = fs.listLocatedStatus(path);
-            while (iterator.hasNext()) {
-                LocatedFileStatus fileStatus = iterator.next();
-                Path oldpath = fileStatus.getPath();
-                String newfile = oldpath + ".gzip";
-                if (fileStatus.getLen() == 0) {
-                    fs.delete(oldpath, true);
-
-                    System.out.println("删除空文件： "+oldpath);
-                    continue;
-                } else {
-                    compress(oldpath.toString(), newfile);
-                }
-            }
-
-
-       }
 
     }
 
@@ -81,17 +60,18 @@ public class hadoopGZ {
         System.out.println(" 已删除"+input);
     }
 
-    public static void unGzipFile(String sourcedir) {
-        String ouputfile = "";
+    public static void unGzipFile(FileSystem fs,String input,String ouput) {
+
         try {
             //建立gzip压缩文件输入流
-            FileInputStream fin = new FileInputStream(sourcedir);
+            FSDataInputStream open = fs.open(new Path(input));
+            FSDataOutputStream fout = fs.create(new Path(ouput), true);
+
+
             //建立gzip解压工作流
-            GZIPInputStream gzin = new GZIPInputStream(fin);
+            GZIPInputStream gzin = new GZIPInputStream(open);
             //建立解压文件输出流
-            ouputfile = sourcedir.substring(0,sourcedir.lastIndexOf('.'));
-            ouputfile = ouputfile.substring(0,ouputfile.lastIndexOf('.'));
-            FileOutputStream fout = new FileOutputStream(ouputfile);
+
 
             int num;
             byte[] buf=new byte[1024];
@@ -103,7 +83,37 @@ public class hadoopGZ {
 
             gzin.close();
             fout.close();
-            fin.close();
+            open.close();
+        } catch (Exception ex){
+            System.err.println(ex.toString());
+        }
+        return;
+    }
+
+
+    public static void unGzip(String input,String ouput) {
+
+        try {
+            //建立gzip压缩文件输入流
+            FileInputStream open = new FileInputStream(input);
+            FileOutputStream fout = new FileOutputStream(ouput);
+
+            //建立gzip解压工作流
+            GZIPInputStream gzin = new GZIPInputStream(open);
+            //建立解压文件输出流
+
+
+            int num;
+            byte[] buf=new byte[1024];
+
+            while ((num = gzin.read(buf,0,buf.length)) != -1)
+            {
+                fout.write(buf,0,num);
+            }
+
+            gzin.close();
+            fout.close();
+            open.close();
         } catch (Exception ex){
             System.err.println(ex.toString());
         }

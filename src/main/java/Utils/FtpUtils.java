@@ -1,5 +1,6 @@
 package Utils;
 
+import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPFile;
 import org.apache.commons.net.ftp.FTPReply;
@@ -38,11 +39,12 @@ public class FtpUtils {
      */
     public void initFtpClient() {
         ftpClient = new FTPClient();
-        ftpClient.setControlEncoding("GB2312");//GB2312  utf-8
+        ftpClient.setControlEncoding("utf-8");//GB2312  utf-8
         try {
             System.out.println("connecting...ftp服务器:"+this.hostname+":"+this.port);
             ftpClient.connect(hostname, port); //连接ftp服务器
             ftpClient.login(username, password); //登录ftp服务器
+            ftpClient.setFileType(FTP.BINARY_FILE_TYPE);
             int replyCode = ftpClient.getReplyCode(); //是否成功登录服务器
             if(!FTPReply.isPositiveCompletion(replyCode)){
                 System.out.println("connect failed...ftp服务器:"+this.hostname+":"+this.port);

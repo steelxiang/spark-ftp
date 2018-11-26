@@ -6,7 +6,7 @@ import java.text.SimpleDateFormat
 import java.util
 import java.util.{Calendar, Date}
 
-import Utils.SFTPUtil
+import Utils.{JS_hdfs, SFTPUtil}
 import com.jcraft.jsch.SftpException
 import loaddata.ftp2hdfs_dpi.{dpi, localpath}
 import org.apache.commons.io.FileUtils
@@ -19,6 +19,7 @@ import org.apache.log4j.Logger
 
 import scala.collection.mutable
 import scala.collection.mutable._
+import scala.io.Source
 
 /**
   * @author xiang
@@ -74,7 +75,7 @@ object ftp2hdfs_js {
     list.foreach(t=>{
       if (readList.contains(t)) {
         list = list - t
-        dpi.logger.warn("已移除 "+t)
+
 
       } else {
         readList.add(t)
@@ -82,14 +83,17 @@ object ftp2hdfs_js {
 
     })
 
+
+    dpi.logger.warn("待上传列表：")
+    list.foreach(t=>println(t))
     //下载到本地
-    list.foreach(t=>{
-      down2local(t,locatmp+t)
-    })
+
+   down2local(list)
 
 
     list.foreach(t=>{
-      append(fs,locatmp+t,fsPath+t.substring(3,11))
+      JS_hdfs.append(fs,locatmp+t,fsPath+t.substring(3,11))
+      save2list(t)
     })
 
     val fslist = getFslist(fs,fsPath)
@@ -107,13 +111,13 @@ object ftp2hdfs_js {
     var result:DataFrame=null
     for (filename <- list) {
       js.logger.warn("开始加载： "+filename)
-      val df: DataFrame = spark.read.load(fsPath + filename)
+      val df: DataFrame = spark.read.text(fsPath + filename)
 
           val frame = df.map(t => {
 
             val dataSource: Int = 12
             val URL: String =t.getString(0)
-            val Id: String = t.getString(0)
+            val Id: String = ""
             val URL_Time: Int =1
             val dt: String = filename
             YHtable(dataSource, URL, Id, URL_Time, dt)
@@ -174,9 +178,16 @@ object ftp2hdfs_js {
     list
   }
 
+  def save2list(filename:String)={
+    val f=new File(localpath)
+    if(!f.exists()) f.createNewFile()
+    FileUtils.writeLines(f,util.Arrays.asList(filename))
+  }
+
 
   @throws[IOException]
   def append(fs:FileSystem ,localpath: String, FSpath: String): Unit = {
+    dpi.logger.warn("上传文件："+localpath)
     val path = new Path(FSpath)
     var append: FSDataOutputStream  = null
     if (fs.exists(path)) {
@@ -186,24 +197,29 @@ object ftp2hdfs_js {
       append = fs.create(path)
 
     }
-    val reader = new BufferedReader(new FileReader(localpath))
-    var line = " "
-    while ((line = reader.readLine)!=null ) {
-      line = line + "\n"
-      append.writeBytes(line)
 
-      }
+
+
+    Source.fromFile(new File(localpath)).getLines.foreach { line =>
+
+      append.writeBytes(line+"\n")
+    }
+
     //删除本地文件
     FileUtils.deleteQuietly(new File(localpath))
+    dpi.logger.warn("删除临时文件："+localpath)
       append.flush()
       append.close()
     }
 
 
-  def down2local(filename:String,localPath:String): Unit ={
+  def down2local(list:ListBuffer[String]): Unit ={
     val client = new SFTPUtil(userName, password, host, port)
     client.login()
-    client.download(ftpPath,filename,localPath)
+    list.foreach(filename=>{
+      dpi.logger.warn("开始下载文件： "+filename)
+      client.download(ftpPath,filename,locatmp+filename)
+    })
     client.logout()
 
 

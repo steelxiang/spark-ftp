@@ -191,7 +191,7 @@ public class SFTPUtil {
      * @param saveFile     存在本地的路径
      */
 
-    public void download(String directory, String downloadFile, String saveFile) throws SftpException, FileNotFoundException {
+    public void download(String directory, String downloadFile, String saveFile) throws SftpException, IOException {
 
         if (directory != null && !"".equals(directory)) {
 
@@ -200,8 +200,11 @@ public class SFTPUtil {
         }
 
         File file = new File(saveFile);
+       FileOutputStream fos= new FileOutputStream(file);
 
-        sftp.get(downloadFile, new FileOutputStream(file));
+        sftp.get(downloadFile, fos);
+        fos.flush();
+        fos.close();
 
     }
 
@@ -267,9 +270,10 @@ public class SFTPUtil {
 
 
     public static void main(String[] args) throws SftpException {
-        SFTPUtil sftpUtil = new SFTPUtil("yanjiuyuan", "yanjiuyuan@20180827", "10.4.12.186", 22);
+        SFTPUtil sftpUtil = new SFTPUtil("root", "Hg!35#89s", "172.31.20.172", 22);
 
-        ArrayList<String> list = sftpUtil.getList(sftpUtil, "/home/yanjiuyuan/data");
+        ArrayList<String> list = sftpUtil.getList(sftpUtil, "/home/");
+        System.out.println(list);
 
     }
 

@@ -10,7 +10,7 @@ import com.jcraft.jsch.SftpException
 import loaddata.ftp2hdfs_dpi.dpi
 import org.apache.commons.net.util.Base64
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.{FSDataInputStream, FSDataOutputStream, FileSystem, Path}
+import org.apache.hadoop.fs._
 import org.apache.hadoop.io.IOUtils
 import org.apache.hadoop.io.compress.{CompressionCodec, CompressionOutputStream, Decompressor}
 import org.apache.hadoop.util.ReflectionUtils
@@ -31,16 +31,13 @@ class ftp2hdfs_it{
 }
 object ftp2hdfs_it {
   private val it = new ftp2hdfs_it
-  val host = "10.4.41.99:21"
-  val userName = "yanjy_lch"
-  val password = "UxGsD1a#,kA"
-  val port = "21"
+
   var path2 = "/data/yhb/pdc_in/"  ///data/yhb/url_in
   var path1 = "/data/yhb/url_in/"
 
   var codecClassName = "org.apache.hadoop.io.compress.GzipCodec"
 
-val tmp="/user/misas_dev/data/tmp/"
+  val tmp="/user/misas_dev/data/tmp/it"
   var fs: FileSystem = null
   var conf = new Configuration
 
@@ -66,15 +63,20 @@ val tmp="/user/misas_dev/data/tmp/"
     fs = FileSystem.get(conf)
     val ftp = new FtpUtils()
 
-    //ftp.downloadFile(fs,path1,s"cdpi-$date.txt.gzip",s"cdpi-$date.txt.gz")
-   // ftp.downloadFile(fs,path1,"cdpi-20181121.txt.gzip","cdpi-20181121.txt.gz")
-  decompress("cdpi-20181121.txt.gzip","cdpi-20181121.txt")
-     // spark.read.text(s"ftp://$userName:$password@$host$path1/cdpi-20180428.txt.gzip").show()
+    ftp.downloadFile(fs,path1,s"gdpi-$date.txt.gzip",s"$tmp/gdpi-$date.txt.gz")
+    ftp.downloadFile(fs,path1,s"lte-$date.txt.gzip",s"$tmp/lte-$date.txt.gz")
+    ftp.downloadFile(fs,path1,s"cdpi-$date.txt.gzip",s"$tmp/cdpi-$date.txt.gz")
+
+    ftp.downloadFile(fs,path2,s"lte_cdpi_url_$date.txt.gz",s"$tmp/lte_cdpi_url_$date.txt.gz")
+    ftp.downloadFile(fs,path2,s"gdpi_url_$date.txt.gz" ,s"$tmp/gdpi_url_$date.txt.gz")
+    ftp.downloadFile(fs,path2,s"3g_cdpi_url_$date.txt.gz",s"$tmp/3g_cdpi_url_$date.txt.gz")
+
+     val strings = getFslist(fs,tmp)
 
 
-  // upload(path2,s"lte_cdpi_url_$date.txt.gz", 6)
+   // upload(path2,s"lte_cdpi_url_$date.txt.gz", 6)
    // upload(path2,s"3g_cdpi_url_$date.txt.gz", 7)   数据不再更新   截止 20171115
-  //  upload(path2,s"gdpi_url_$date.txt.gzip", 11)    数据不再更新  截止 20171115
+   // upload(path2,s"gdpi_url_$date.txt.gzip", 11)    数据不再更新  截止 20171115
    // upload(path1,s"lte-$date.txt.gzip", 8)
    // upload(s"cdpi-$date.txt.gz", 9)
    // upload(path1,s"gdpi-$date.txt.gzip", 10)
@@ -85,7 +87,7 @@ val tmp="/user/misas_dev/data/tmp/"
 
   def upload(filename: String, dataType: Int): Unit = {
     val df = spark.read.text(tmp+filename)
-    println(filename)
+        println(filename)
 
 
 //    val table = df.map(t => {
@@ -118,29 +120,17 @@ val tmp="/user/misas_dev/data/tmp/"
     s
   }
 
+  def getFslist(fs:FileSystem,fsPath:String)={
+    val fileList: RemoteIterator[LocatedFileStatus] = fs.listLocatedStatus(new Path(fsPath))
+    var list: ListBuffer[String] = ListBuffer()
+    while(fileList.hasNext){
+      val name: String = fileList.next().getPath.getName
+      list.append(name)
+    }
+    list
 
-  @throws[Exception]
-  def decompress(input: String, output: String): Unit = {
-    if (input.endsWith(".gzip") || input.endsWith(".gz")) return
-    val codecClass = Class.forName(codecClassName)
-    val codec: CompressionCodec = ReflectionUtils.newInstance(codecClass, conf).asInstanceOf[CompressionCodec]
-   // val decodec: Decompressor = ReflectionUtils.newInstance(codecClass, conf).asInstanceOf[Decompressor]
-
-
-
-    //指定压缩文件路径
-    val outputStream = fs.create(new Path(output))
-    //指定要被压缩的文件路径
-    val in = fs.open(new Path(input))
-    //创建压缩输出流
-    val out: CompressionOutputStream = codec.createOutputStream(outputStream)
-    System.out.println("开始压缩 ：" + input)
-    IOUtils.copyBytes(in, out, conf)
-    IOUtils.closeStream(in)
-    IOUtils.closeStream(out)
-    //fs.delete(new Path(input), true)
-    System.out.println(" 已删除" + input)
   }
+
 
 }
 

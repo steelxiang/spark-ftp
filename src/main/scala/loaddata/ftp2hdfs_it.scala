@@ -16,7 +16,7 @@ import org.apache.hadoop.io.compress.{CompressionCodec, CompressionOutputStream,
 import org.apache.hadoop.util.ReflectionUtils
 import org.apache.log4j.Logger
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
+import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 import org.apache.spark.sql.functions._
 
 import scala.collection.mutable._
@@ -40,6 +40,7 @@ object ftp2hdfs_it {
   val tmp="/user/misas_dev/data/tmp/it"
   var fs: FileSystem = null
   var conf = new Configuration
+  var localdir = "/tmp/"
 
   val spark: SparkSession = SparkSession
     .builder()
@@ -71,39 +72,55 @@ object ftp2hdfs_it {
     ftp.downloadFile(fs,path2,s"gdpi_url_$date.txt.gz" ,s"$tmp/gdpi_url_$date.txt.gz")
     ftp.downloadFile(fs,path2,s"3g_cdpi_url_$date.txt.gz",s"$tmp/3g_cdpi_url_$date.txt.gz")
 
-     val strings = getFslist(fs,tmp)
+     val filelist = getFslist(fs,tmp)
 
+//    6  手机3/4G数据，lte_cdpi_url
+//    7  手机3/4G数据，3g_cdpi_url
+//    8  手机4G数据，lte
+//    9  C网数据，cdpi
+//    10 G网数据，gdpi
+//    11 G网数据, gdpi_url
+     filelist.foreach(t=>{
+       if(t.startsWith("3g_cdpi_url"))   save2hive(t,7)     //数据不再更新   截止 20171115
+       if(t.startsWith("gdpi_url"))      save2hive(t,11)     //数据不再更新   截止 20171115
+       if(t.startsWith("lte_cdpi_url"))  save2hive(t,6)      //
+       if(t.startsWith("gdpi-"))         save2hive(t,10)
+       if(t.startsWith("lte-"))          save2hive(t,8)
+       if(t.startsWith("cdpi-"))         save2hive(t,9)
 
-   // upload(path2,s"lte_cdpi_url_$date.txt.gz", 6)
-   // upload(path2,s"3g_cdpi_url_$date.txt.gz", 7)   数据不再更新   截止 20171115
-   // upload(path2,s"gdpi_url_$date.txt.gzip", 11)    数据不再更新  截止 20171115
-   // upload(path1,s"lte-$date.txt.gzip", 8)
-   // upload(s"cdpi-$date.txt.gz", 9)
-   // upload(path1,s"gdpi-$date.txt.gzip", 10)
+     })
 
+    fs.close()
     spark.close()
   }
 
 
-  def upload(filename: String, dataType: Int): Unit = {
-    val df = spark.read.text(tmp+filename)
+  def save2hive(filename: String, dataType: Int): Unit = {
+    val df = spark.read.text(tmp+"/"+filename)
+
         println(filename)
+    val namedate=date
+    val d=namedate.substring(0,4)+"-"+namedate.substring(4,6)+"-"+namedate.substring(6,8)
+    val table = df.map(t => {
+            val line: Array[String] = t.getString(0).split("\t")
+      val dataSource: Int = dataType
+      var URL: String =line(0)
+      var URL_Time: Int =1
+      if(filename.startsWith("lte_cdpi_url")) {
+        URL=line(1)
+      }else{
+        URL_Time=line(1).toInt
+      }
+      val Id: String = ""
+      val dt: String = d
+      YHtable(dataSource, URL, Id, URL_Time, dt)
 
+    }
+    )
+    table.repartition(1).write.insertInto("url.apk")
 
-//    val table = df.map(t => {
-//
-//      val dataSource: Int = dataType
-//      val URL: String =t.getString(0)
-//      val Id: String = ""
-//      val URL_Time: Int =1
-//      val dt: String = date
-//      YHtable(dataSource, URL, Id, URL_Time, dt)
-//
-//    }
-//    )
-
-    df.show()
-    // table.write.insertInto("dpi")
+    fs.delete(new Path(tmp+"/"+filename),true)
+    it.logger.warn("删除临时fs文件 "+filename)
 
   }
 
@@ -116,7 +133,7 @@ object ftp2hdfs_it {
     val dateFormat = new SimpleDateFormat("yyyyMMdd")
     calendar.add(Calendar.DATE,-1)
     val s = dateFormat.format(calendar.getTime)
-    dpi.logger.warn("yestoday is : " + s)
+    it.logger.warn("yestoday is : " + s)
     s
   }
 

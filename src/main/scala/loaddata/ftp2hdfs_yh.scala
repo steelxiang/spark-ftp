@@ -36,12 +36,6 @@ class ftp2hdfs_yh{
 object ftp2hdfs_yh {
 
   val yh = new ftp2hdfs_yh
-//  val host="10.4.12.186"
-//  val userName="yanjiuyuan"
-//  val password="yanjiuyuan@20180827"
-//  val port=22
-//  var path="/home/yanjiuyuan/data"
-
   var fs: FileSystem = null
   var conf = new Configuration
   val fsPath = "/user/misas_dev/data/tmp/yh/"
@@ -96,24 +90,23 @@ object ftp2hdfs_yh {
   }
 
     def insertData(df: Dataset[Array[String]],date:String,datetype:Int)={
-        val source_ds: Dataset[YHtable] =df.map(words=> {
+
+      val d=date.substring(0,4)+"-"+date.substring(4,6)+"-"+date.substring(6,8)
+        val table: Dataset[YHtable] =df.map(words=> {
         val dataSource: Int = datetype
         val URL: String = words(1)
         val Id: String = words(0)
         val URL_Time: Int = 1
-        val dt: String = date
+        val dt: String = d
         YHtable(dataSource, URL, Id, URL_Time, dt)
       }
       )
-      val table: DataFrame = source_ds.withColumn("date",to_date(unix_timestamp($"dt","yyyyMMdd").cast("timestamp"),"yyyyMMdd")).drop("dt")
 
-     table.show()
       yh.logger.warn("开始插入数据")
-      table.write.insertInto("url.apk")
+      table.repartition(1).write.insertInto("url.apk")
       yh.logger.warn("插入完毕")
 
     }
-
 
   def getList ={
     val list=ListBuffer[String]()

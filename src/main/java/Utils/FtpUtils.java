@@ -1,5 +1,6 @@
 package Utils;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPFile;
@@ -96,20 +97,27 @@ public class FtpUtils {
         fos.flush();
         fos.close();
 
-        Path p=new Path(fspath+fsname);
+        Path p=new Path(fsname);
+        if(FileUtils.sizeOf(localfile)>0){
 
-       fs.copyFromLocalFile(new Path(localdir+filename) ,p );
+            fs.copyFromLocalFile(true,true,new Path(localdir+filename) ,p );
+        }else {
+            FileUtils.deleteQuietly(localfile);
+        }
+
 
         System.out.println("上传hdfs完成 "+filename);
 
+
+
         ftpClient.logout();
-        fs.close();
+
     }
 
 
 
     public static void main(String[] args) {
-        System.out.println("DES2018111315593351126FX014.txt".substring(3,11));
+        System.out.println("0x01+0x0300+000+M-JS-SZ+XF+001+20181016021000".length());
 
 
 //        FtpUtils ftp =new FtpUtils();

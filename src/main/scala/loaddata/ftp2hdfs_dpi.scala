@@ -153,10 +153,10 @@ object ftp2hdfs_dpi {
     //  println(Calendar.getInstance.getTime + ":文件 " + date + " : " + filename)
 
       //0x01+0x0300+000+M-JS-SZ+XF+001+20181016021000
-      val namedate = filename.substring(31, 39)
-
+      val namedate = filename.substring(31, 39).format()
+      val dt=namedate.substring(0,4)+"-"+namedate.substring(4,6)+"-"+namedate.substring(6,8)
       val arr_ds: Dataset[Array[String]] = df.map(t => t.getString(0).split("\\|")).filter(t => t.length == 12)
-      val source_ds = arr_ds.map(words => {
+      val table = arr_ds.map(words => {
         val UserAccount: String = words(0)
         val ProtocolType: String = words(1)
         val SrcIP: String = words(2)
@@ -170,18 +170,17 @@ object ftp2hdfs_dpi {
         val Cookie: String = new String(Base64.decodeBase64(words(10)))
         val AccessTime:String = words(11)
         tableData(17, SrcIP, SrcPort, DestIP, DescPort, "", "", DomainName, URL, UserAgent, "", "", referer,
-          Cookie, "", "", "", "", "", "", "", ProtocolType,AccessTime, 1, namedate)
+          Cookie, "", "", "", "", "", "", "", ProtocolType,AccessTime, 1, dt)
 
       })
 
-      val table: DataFrame = source_ds.withColumn("date",to_date(unix_timestamp($"dt","yyyyMMdd").cast("timestamp"),"yyyyMMdd")).drop("dt")
 
 
 
     //  source_ds.show()
      // table.show()
       dpi.logger.warn("开始插入： "+filename)
-      table.write.insertInto("url.dpi")
+      table.repartition(1).write.insertInto("url.dpi")
       dpi.logger.warn("插入完成： "+filename)
       FileUtils.deleteQuietly(new File("/tmp/"+filename))
       dpi.logger.warn("删除临时文件： "+filename)
@@ -248,6 +247,10 @@ object ftp2hdfs_dpi {
 
 
   }
+
+
+
+
 }
 
 

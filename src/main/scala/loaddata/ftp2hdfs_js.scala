@@ -111,9 +111,11 @@ object ftp2hdfs_js {
     var result:DataFrame=null
     for (filename <- list) {
       js.logger.warn("开始加载： "+filename)
+
+      val dt=filename.substring(0,4)+"-"+filename.substring(4,6)+"-"+filename.substring(6,8)
       val df: DataFrame = spark.read.text(fsPath + filename)
 
-          val frame = df.map(t => {
+          val table = df.map(t => {
 
             val dataSource: Int = 12
             val URL: String =t.getString(0)
@@ -125,12 +127,11 @@ object ftp2hdfs_js {
           }
           )
 
-     val table: DataFrame = frame.withColumn("date",to_date(unix_timestamp($"dt","yyyyMMdd").cast("timestamp"),"yyyyMMdd")).drop("dt")
 
 
       // table.show()
       js.logger.warn("开始插入： "+filename)
-      table.write.insertInto("url.apk")
+      table.repartition(1).write.insertInto("url.apk")
       js.logger.warn("插入完成： "+filename)
 
       fs.delete(new Path(fsPath + filename),true)

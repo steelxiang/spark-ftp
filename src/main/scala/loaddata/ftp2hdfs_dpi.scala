@@ -177,7 +177,7 @@ object ftp2hdfs_dpi {
 
 
 
-    //  source_ds.show()
+
      // table.show()
       dpi.logger.warn("开始插入： "+filename)
       table.repartition(1).write.insertInto("url.dpi")

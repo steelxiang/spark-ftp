@@ -53,7 +53,7 @@ object ftp2hdfs_it {
   import spark.implicits._
 
   val context = spark.sparkContext
-  context.setLogLevel("WARN")
+ // context.setLogLevel("WARN")
   val sqlcontext = spark.sqlContext
   val date = getYester
 
@@ -80,15 +80,21 @@ object ftp2hdfs_it {
 //    9  C网数据，cdpi
 //    10 G网数据，gdpi
 //    11 G网数据, gdpi_url
-     filelist.foreach(t=>{
-       if(t.startsWith("3g_cdpi_url"))   save2hive(t,7)     //数据不再更新   截止 20171115
-       if(t.startsWith("gdpi_url"))      save2hive(t,11)     //数据不再更新   截止 20171115
-       if(t.startsWith("lte_cdpi_url"))  save2hive(t,6)      //
-       if(t.startsWith("gdpi-"))         save2hive(t,10)
-       if(t.startsWith("lte-"))          save2hive(t,8)
-       if(t.startsWith("cdpi-"))         save2hive(t,9)
 
-     })
+    if(filelist.length>0) {
+
+      filelist.foreach(t => {
+        if (t.startsWith("3g_cdpi_url")) save2hive(t, 7) //数据不再更新   截止 20171115
+        if (t.startsWith("gdpi_url")) save2hive(t, 11) //数据不再更新   截止 20171115
+        if (t.startsWith("lte_cdpi_url")) save2hive(t, 6) //
+        if (t.startsWith("gdpi-")) save2hive(t, 10)
+        if (t.startsWith("lte-")) save2hive(t, 8)
+        if (t.startsWith("cdpi-")) save2hive(t, 9)
+
+      })
+    }else{
+      println("列表为空")
+    }
 
     fs.close()
     spark.close()
@@ -99,14 +105,14 @@ object ftp2hdfs_it {
     val df = spark.read.text(tmp+"/"+filename)
 
         println(filename)
-    val namedate=date
+    val namedate=filename.substring(filename.length-15,filename.length-7)
     val d=namedate.substring(0,4)+"-"+namedate.substring(4,6)+"-"+namedate.substring(6,8)
     val table = df.map(t => {
             val line: Array[String] = t.getString(0).split("\t")
       val dataSource: Int = dataType
       var URL: String =line(0)
       var URL_Time: Int =1
-      if(filename.startsWith("lte_cdpi_url")) {
+      if(filename.startsWith("lte_cdpi_url") || filename.startsWith("3g_cdpi_url")) {
         URL=line(1)
       }else{
         URL_Time=line(1).toInt

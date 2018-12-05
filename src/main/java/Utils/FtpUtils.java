@@ -33,6 +33,8 @@ public class FtpUtils {
 
     public String fspath="/user/misas_dev/data/tmp/";
 
+    public Logger logger=Logger.getLogger(FtpUtils.class );
+
 
 
     /**
@@ -46,11 +48,12 @@ public class FtpUtils {
             ftpClient.connect(hostname, port); //连接ftp服务器
             ftpClient.login(username, password); //登录ftp服务器
             ftpClient.setFileType(FTP.BINARY_FILE_TYPE);
+            ftpClient.enterLocalActiveMode();
             int replyCode = ftpClient.getReplyCode(); //是否成功登录服务器
             if(!FTPReply.isPositiveCompletion(replyCode)){
-                System.out.println("connect failed...ftp服务器:"+this.hostname+":"+this.port);
+                logger.info("connect failed...ftp服务器:"+this.hostname+":"+this.port);
             }
-            System.out.println("connect successfu...ftp服务器:"+this.hostname+":"+this.port);
+            logger.info("connect successfu...ftp服务器:"+this.hostname+":"+this.port);
         }catch (MalformedURLException e) {
             e.printStackTrace();
         }catch (IOException e) {
@@ -85,15 +88,16 @@ public class FtpUtils {
 
         //先下载到本地临时文件/tmp/
         initFtpClient();
-        System.out.println("开始下载文件 "+filename);
+        logger.info("开始下载文件 "+filename);
          File localfile=new File(localdir+filename);
          if(!localfile.exists()){
              localfile.createNewFile();
          }
 
         FileOutputStream fos=new FileOutputStream(localfile);
+
         ftpClient.retrieveFile(pathname+filename, fos);
-        System.out.println("本地下载完成："+filename);
+        logger.info("本地下载完成："+filename);
         fos.flush();
         fos.close();
 
@@ -106,7 +110,7 @@ public class FtpUtils {
         }
 
 
-        System.out.println("上传hdfs完成 "+filename);
+        logger.info("上传hdfs完成 "+filename);
 
 
 

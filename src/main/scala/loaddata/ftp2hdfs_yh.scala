@@ -17,6 +17,7 @@ import org.apache.log4j.Logger
 import org.apache.spark.sql.{DataFrame, Dataset, SparkSession}
 import org.apache.spark.sql.functions._
 
+import scala.collection.mutable
 import scala.collection.mutable._
 /**
   * @author xiang
@@ -89,6 +90,7 @@ object ftp2hdfs_yh {
     yh.logger.warn("----------list---finish-------------")
   }
 
+
     def insertData(df: Dataset[Array[String]],date:String,datetype:Int)={
 
       val d=date.substring(0,4)+"-"+date.substring(4,6)+"-"+date.substring(6,8)
@@ -107,6 +109,7 @@ object ftp2hdfs_yh {
       yh.logger.warn("插入完毕")
 
     }
+
 
   def getList ={
     val list=ListBuffer[String]()

@@ -44,7 +44,7 @@ public class FtpUtils {
         ftpClient = new FTPClient();
         ftpClient.setControlEncoding("utf-8");//GB2312  utf-8
         try {
-            System.out.println("connecting...ftp服务器:"+this.hostname+":"+this.port);
+            logger.info("connecting...ftp服务器:"+this.hostname+":"+this.port);
             ftpClient.connect(hostname, port); //连接ftp服务器
             ftpClient.login(username, password); //登录ftp服务器
             ftpClient.setFileType(FTP.BINARY_FILE_TYPE);

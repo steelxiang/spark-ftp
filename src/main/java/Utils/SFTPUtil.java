@@ -11,13 +11,13 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.Properties;
 import java.util.Vector;
-
+import org.apache.log4j.Logger;
 /**
  * 类说明 sftp工具类
  */
 
 public class SFTPUtil {
-   // private transient Logger log = LoggerFactory.getLogger(this.getClass());
+    private Logger log = Logger.getLogger(this.getClass());
     private ChannelSftp sftp;
     private Session session;
     /**

@@ -1,6 +1,7 @@
 package loaddata
 
 
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util
 import java.util.{Calendar, Date}
@@ -8,6 +9,7 @@ import java.util.{Calendar, Date}
 import Utils.{FtpUtils, SFTPUtil}
 import com.jcraft.jsch.SftpException
 import loaddata.ftp2hdfs_dpi.dpi
+import org.apache.commons.io.FileUtils
 import org.apache.commons.net.util.Base64
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs._
@@ -72,7 +74,15 @@ object ftp2hdfs_it {
     ftp.downloadFile(fs,path2,s"gdpi_url_$date.txt.gz" ,s"$tmp/gdpi_url_$date.txt.gz")
     ftp.downloadFile(fs,path2,s"3g_cdpi_url_$date.txt.gz",s"$tmp/3g_cdpi_url_$date.txt.gz")
 
-     val filelist = getFslist(fs,tmp)
+     var filelist: ListBuffer[String] = getFslist(fs,tmp)
+       val saveList =getsaveList
+
+    filelist.foreach(t=>{
+      if(saveList.contains(t)){
+        filelist=filelist-t
+        it.logger.info("文件已上传过："+t)
+      }
+    })
 
 //    6  手机3/4G数据，lte_cdpi_url
 //    7  手机3/4G数据，3g_cdpi_url
@@ -124,7 +134,7 @@ object ftp2hdfs_it {
     }
     )
     table.repartition(1).write.insertInto("url.apk")
-
+     save2list(filename)
     fs.delete(new Path(tmp+"/"+filename),true)
     it.logger.warn("删除临时fs文件 "+filename)
 
@@ -152,6 +162,17 @@ object ftp2hdfs_it {
     }
     list
 
+  }
+
+  def save2list(filename:String): Unit ={
+
+    FileUtils.writeLines(new File("/home/misas_dev/data2hdfs/tmp/it/filelist.txt"),util.Arrays.asList(filename))
+  }
+
+  def getsaveList ={
+
+    val list: util.List[String] = FileUtils.readLines(new File("/home/misas_dev/data2hdfs/tmp/it/filelist.txt"))
+    list
   }
 
 

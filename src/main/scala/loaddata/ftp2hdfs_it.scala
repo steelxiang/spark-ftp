@@ -60,12 +60,13 @@ object ftp2hdfs_it {
   val date = getYester
 
   def main(args: Array[String]): Unit = {
+    //设置Hadoopc参数
     conf.set("fs.defaultFS", "hdfs://172.31.20.176:8020")
     conf.set("fs.hdfs.impl", "org.apache.hadoop.hdfs.DistributedFileSystem")
     System.setProperty("HADOOP_USER_NAME", "misas_dev")
     fs = FileSystem.get(conf)
-    val ftp = new FtpUtils()
 
+//文件先下载到本地再上传到hdfs,临时文件会删除
     load_it.downloadFile(fs,path1,s"gdpi-$date.txt.gzip",s"$tmp/gdpi-$date.txt.gz")
     load_it.downloadFile(fs,path1,s"lte-$date.txt.gzip",s"$tmp/lte-$date.txt.gz")
     load_it.downloadFile(fs,path1,s"cdpi-$date.txt.gzip",s"$tmp/cdpi-$date.txt.gz")
@@ -110,7 +111,7 @@ object ftp2hdfs_it {
     spark.close()
   }
 
-
+//数据插入hive
   def save2hive(filename: String, dataType: Int): Unit = {
     val df = spark.read.text(tmp+"/"+filename)
 

@@ -28,7 +28,7 @@ public class myListener implements EventListener {
 
     @Override
     public void downloadCompleted(String s, String s1) {
-        log.info("开始完成-------"+s1);
+        log.info("下载完成-------"+s1);
     }
 
     @Override

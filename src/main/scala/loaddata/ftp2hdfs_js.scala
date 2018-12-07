@@ -40,7 +40,7 @@ object ftp2hdfs_js {
   val password = "Hg!35#89s"
   val port = 22
   var ftpPath = "/data1/Data/ApkUrlData/apkData_JS"
-  val localpath="/home/misas_dev/data2hdfs/tmp/js/filelist"
+  val localpath="/home/misas_dev/data2hdfs/tmp/js/filelist.txt"
   val locatmp="/home/misas_dev/data2hdfs/tmp/js/"
   val fsPath="/user/misas_dev/data/tmp/js/"
 
@@ -84,7 +84,7 @@ object ftp2hdfs_js {
     })
 
 
-    dpi.logger.warn("待上传列表：")
+    js.logger.warn("待上传列表：")
     list.foreach(t=>println(t))
     //下载到本地
 
@@ -121,7 +121,6 @@ object ftp2hdfs_js {
             val URL: String =t.getString(0)
             val Id: String = ""
             val URL_Time: Int =1
-            val dt: String = filename
             YHtable(dataSource, URL, Id, URL_Time, dt)
 
           }
@@ -182,13 +181,16 @@ object ftp2hdfs_js {
   def save2list(filename:String)={
     val f=new File(localpath)
     if(!f.exists()) f.createNewFile()
-    FileUtils.writeLines(f,util.Arrays.asList(filename))
+    FileUtils.writeLines(f,util.Arrays.asList(filename),true)
+
+
+
   }
 
 
   @throws[IOException]
   def append(fs:FileSystem ,localpath: String, FSpath: String): Unit = {
-    dpi.logger.warn("上传文件："+localpath)
+    js.logger.warn("上传文件："+localpath)
     val path = new Path(FSpath)
     var append: FSDataOutputStream  = null
     if (fs.exists(path)) {
@@ -208,7 +210,7 @@ object ftp2hdfs_js {
 
     //删除本地文件
     FileUtils.deleteQuietly(new File(localpath))
-    dpi.logger.warn("删除临时文件："+localpath)
+    js.logger.warn("删除临时文件："+localpath)
       append.flush()
       append.close()
     }
@@ -218,7 +220,7 @@ object ftp2hdfs_js {
     val client = new SFTPUtil(userName, password, host, port)
     client.login()
     list.foreach(filename=>{
-      dpi.logger.warn("开始下载文件： "+filename)
+      js.logger.warn("开始下载文件： "+filename)
       client.download(ftpPath,filename,locatmp+filename)
     })
     client.logout()

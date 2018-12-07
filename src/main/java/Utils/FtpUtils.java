@@ -1,6 +1,7 @@
 package Utils;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.net.ProtocolCommandListener;
 import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPFile;
@@ -34,6 +35,7 @@ public class FtpUtils {
     public String fspath="/user/misas_dev/data/tmp/";
 
     public Logger logger=Logger.getLogger(FtpUtils.class );
+
 
 
 

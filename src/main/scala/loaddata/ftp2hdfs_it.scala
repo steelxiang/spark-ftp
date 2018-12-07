@@ -6,7 +6,7 @@ import java.text.SimpleDateFormat
 import java.util
 import java.util.{Calendar, Date}
 
-import Utils.{FtpUtils, SFTPUtil}
+import Utils.{FtpUtils, SFTPUtil, load_it}
 import com.jcraft.jsch.SftpException
 import loaddata.ftp2hdfs_dpi.dpi
 import org.apache.commons.io.FileUtils
@@ -66,13 +66,13 @@ object ftp2hdfs_it {
     fs = FileSystem.get(conf)
     val ftp = new FtpUtils()
 
-    ftp.downloadFile(fs,path1,s"gdpi-$date.txt.gzip",s"$tmp/gdpi-$date.txt.gz")
-    ftp.downloadFile(fs,path1,s"lte-$date.txt.gzip",s"$tmp/lte-$date.txt.gz")
-    ftp.downloadFile(fs,path1,s"cdpi-$date.txt.gzip",s"$tmp/cdpi-$date.txt.gz")
+    load_it.downloadFile(fs,path1,s"gdpi-$date.txt.gzip",s"$tmp/gdpi-$date.txt.gz")
+    load_it.downloadFile(fs,path1,s"lte-$date.txt.gzip",s"$tmp/lte-$date.txt.gz")
+    load_it.downloadFile(fs,path1,s"cdpi-$date.txt.gzip",s"$tmp/cdpi-$date.txt.gz")
 
-    ftp.downloadFile(fs,path2,s"lte_cdpi_url_$date.txt.gz",s"$tmp/lte_cdpi_url_$date.txt.gz")
-    ftp.downloadFile(fs,path2,s"gdpi_url_$date.txt.gz" ,s"$tmp/gdpi_url_$date.txt.gz")
-    ftp.downloadFile(fs,path2,s"3g_cdpi_url_$date.txt.gz",s"$tmp/3g_cdpi_url_$date.txt.gz")
+    load_it.downloadFile(fs,path2,s"lte_cdpi_url_$date.txt.gz",s"$tmp/lte_cdpi_url_$date.txt.gz")
+    load_it.downloadFile(fs,path2,s"gdpi_url_$date.txt.gz" ,s"$tmp/gdpi_url_$date.txt.gz")
+    load_it.downloadFile(fs,path2,s"3g_cdpi_url_$date.txt.gz",s"$tmp/3g_cdpi_url_$date.txt.gz")
 
      var filelist: ListBuffer[String] = getFslist(fs,tmp)
        val saveList =getsaveList
@@ -166,7 +166,7 @@ object ftp2hdfs_it {
 
   def save2list(filename:String): Unit ={
 
-    FileUtils.writeLines(new File("/home/misas_dev/data2hdfs/tmp/it/filelist.txt"),util.Arrays.asList(filename))
+    FileUtils.writeLines(new File("/home/misas_dev/data2hdfs/tmp/it/filelist.txt"),util.Arrays.asList(filename),true)
   }
 
   def getsaveList ={

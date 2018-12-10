@@ -96,14 +96,14 @@ object ftp2hdfs_dpi {
         case ex: Exception => {
           today = getToday
           dpi.logger.warn("读取文件异常")
-          Thread.sleep(6000)
+          Thread.sleep(60000)
 
         }
       }
 
       if (list.size == 0) {
         dpi.logger.warn("列表为空")
-        Thread.sleep(6000)
+        Thread.sleep(60000)
       }
 
       else {
@@ -130,7 +130,7 @@ object ftp2hdfs_dpi {
             case ex: Exception => {
               dpi.logger.warn("读取文件异常")
               today = getToday
-              Thread.sleep(6000)
+              Thread.sleep(60000)
             }
           }
         }

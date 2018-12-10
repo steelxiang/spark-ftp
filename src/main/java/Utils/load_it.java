@@ -23,21 +23,22 @@ public class load_it {
 
 
     //  ftp.downloadFile(fs,path1,s"gdpi-$date.txt.gzip",s"$tmp/gdpi-$date.txt.gz")
-    public static void downloadFile(FileSystem fs, String pathname, String filename, String fsname) throws Exception {
+    public static void downloadFile(FileSystem fs, String pathname, String filename, String fsname)  {
 
         FileTransferClient ftp = new FileTransferClient();
         EventListener eventListener = new myListener();
-        ftp.setRemoteHost(host);
-        ftp.setUserName(username);
-        ftp.setPassword(password);
-        ftp.setContentType(FTPTransferType.BINARY);
-        ftp.getAdvancedFTPSettings().setConnectMode(FTPConnectMode.ACTIVE);
-        ftp.setEventListener(eventListener);
+
         int count = 1;
         boolean b = true;
 
         while (b) {
             try {
+                ftp.setRemoteHost(host);
+                ftp.setUserName(username);
+                ftp.setPassword(password);
+                ftp.setContentType(FTPTransferType.BINARY);
+                ftp.getAdvancedFTPSettings().setConnectMode(FTPConnectMode.ACTIVE);
+                ftp.setEventListener(eventListener);
                 ftp.connect();
 
                 if (!ftp.exists(pathname + filename)) {
@@ -49,10 +50,21 @@ public class load_it {
             } catch (Exception e) {
                 log.error("下载失败，重试..." + count + "...次");
                 count++;
+                try {
+                    Thread.sleep(60000);
+                } catch (InterruptedException e1) {
+                    e1.printStackTrace();
+                }
                 continue;
 
             }finally {
-                ftp.disconnect();
+                try {
+                    ftp.disconnect();
+                } catch (FTPException e) {
+                    e.printStackTrace();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         }
 
@@ -62,10 +74,18 @@ public class load_it {
         File localfile = new File(localdir + filename);
 
         if (!localfile.exists()) {
-            localfile.createNewFile();
+            try {
+                localfile.createNewFile();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
 
-        fs.copyFromLocalFile(true, true, new Path(localdir + filename), p);
+        try {
+            fs.copyFromLocalFile(true, true, new Path(localdir + filename), p);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
         FileUtils.deleteQuietly(localfile);
 

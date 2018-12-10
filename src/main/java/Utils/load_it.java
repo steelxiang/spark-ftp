@@ -30,28 +30,33 @@ public class load_it {
         ftp.setRemoteHost(host);
         ftp.setUserName(username);
         ftp.setPassword(password);
-        ftp.connect();
         ftp.setContentType(FTPTransferType.BINARY);
         ftp.getAdvancedFTPSettings().setConnectMode(FTPConnectMode.ACTIVE);
         ftp.setEventListener(eventListener);
-
-        if (!ftp.exists(pathname + filename)) {
-            log.info("文件不存在：" + filename);
-            return;
-        }
         int count = 1;
         boolean b = true;
+
         while (b) {
             try {
+                ftp.connect();
 
+                if (!ftp.exists(pathname + filename)) {
+                    log.info("文件不存在：" + filename);
+                    return;
+                }
                 ftp.downloadFile(localdir + filename, pathname + filename, WriteMode.RESUME);
                 b = false;
             } catch (Exception e) {
                 log.error("下载失败，重试..." + count + "...次");
                 count++;
+                continue;
 
+            }finally {
+                ftp.disconnect();
             }
         }
+
+
 
         Path p = new Path(fsname);
         File localfile = new File(localdir + filename);
@@ -66,7 +71,7 @@ public class load_it {
 
 
         log.info("上传hdfs完成 " + filename);
-        ftp.disconnect();
+
     }
 
 

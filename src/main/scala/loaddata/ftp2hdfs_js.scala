@@ -128,7 +128,7 @@ object ftp2hdfs_js {
 
 
 
-      // table.show()
+       table.show()
       js.logger.warn("开始插入： "+filename)
       table.repartition(1).write.insertInto("url.apk")
       js.logger.warn("插入完成： "+filename)

@@ -168,7 +168,7 @@
                         <configuration>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>loaddata.ftp2hdfs_it</mainClass>
+                                    <mainClass>loaddata.ftp2hdfs_dpi</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>

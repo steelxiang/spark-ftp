@@ -48,6 +48,7 @@ object ftp2hdfs_it {
     .builder()
     .appName("yangmaodang")
     .config("spark.shuffle.consolidateFiles", true)
+    .config("hive.exec.dynamic.partition.mode", "nonstrict")
     .master("local[2]")
     .enableHiveSupport()
     .getOrCreate()
